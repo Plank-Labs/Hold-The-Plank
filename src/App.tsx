@@ -15,6 +15,9 @@ import PlankResult from "./pages/PlankResult";
 import Rankings from "./pages/Rankings";
 import GuildDetail from "./pages/GuildDetail";
 import Profile from "./pages/Profile";
+import GymJoin from "./pages/GymJoin";
+import GymDashboard from "./pages/GymDashboard";
+import GymScan from "./pages/GymScan";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +39,9 @@ const App = () => (
                 <Route path="/rankings" element={<Rankings />} />
                 <Route path="/guild" element={<GuildDetail />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/gym/join" element={<GymJoin />} />
+                <Route path="/gym/dashboard" element={<GymDashboard />} />
+                <Route path="/gym/scan" element={<GymScan />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

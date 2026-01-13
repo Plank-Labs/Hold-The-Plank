@@ -9,6 +9,7 @@ import StreakIndicator from "@/components/StreakIndicator";
 import GuildCard from "@/components/GuildCard";
 import Onboarding from "@/components/Onboarding";
 import { formatTimeReadable, shortenAddress } from "@/lib/gameData";
+import { Card } from "@/components/ui/card";
 import {
   Clock,
   Sparkles,
@@ -17,6 +18,8 @@ import {
   Swords,
   Users,
   ChevronRight,
+  QrCode,
+  Building2,
 } from "lucide-react";
 
 const Index: React.FC = () => {
@@ -263,6 +266,45 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             </GreekButton>
           </div>
         )}
+      </motion.div>
+
+      {/* Gym Referral Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="space-y-3"
+      >
+        <h2 className="font-serif font-semibold text-foreground flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-primary" />
+          Gym Recognition
+        </h2>
+
+        <Card className="border-[#C5A572]/20 bg-[#16213e]/40 p-4 relative overflow-hidden group">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="bg-[#C5A572]/10 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+              <QrCode className="w-8 h-8 text-[#C5A572]" />
+            </div>
+            <div className="text-center sm:text-left grow">
+              <h4 className="font-bold text-white">At the Gym?</h4>
+              <p className="text-xs text-gray-400">Scan our QR code at participating gyms to gain bonus Aura and link your session.</p>
+            </div>
+            <GreekButton
+              size="sm"
+              onClick={() => onNavigate("/gym/scan")}
+              className="whitespace-nowrap"
+            >
+              Scan QR
+            </GreekButton>
+          </div>
+        </Card>
+
+        <button
+          onClick={() => onNavigate("/gym/dashboard")}
+          className="w-full py-2 text-[10px] text-gray-500 uppercase tracking-widest hover:text-[#C5A572] transition-colors"
+        >
+          Gym Owner Dashboard
+        </button>
       </motion.div>
 
       {/* Motivational quote */}

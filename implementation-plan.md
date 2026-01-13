@@ -152,24 +152,23 @@ backend/
 
 # PHASE 3: Gym QR Code Referral System
 
-## 3.1 Data Model
+## 3.1 Data Model (Updated)
 
 Add to `src/lib/gameData.ts`:
 
 ```typescript
 interface Gym {
-  id: string;          // Smart contract gym ID
+  id: number;              // Numeric ID to match backend
   name: string;
-  ownerAddress: string;
-  qrCode: string;      // QR code data URL
-  totalPoints: number;
-  memberCount: number;
+  address: string;         // For display purposes
+  rewardAuraFixed: number; // Mapping from reward_aura_fixed
+  isActive: boolean;
 }
 
 interface GymLink {
-  gymId: string;
-  linkedAt: string;
-  bonusClaimed: boolean;
+  gymId: number;
+  linkedAt: string;        // ISO Date string
+  lastCheckin: string;     // ISO Date string for daily validation
 }
 ```
 
@@ -179,13 +178,39 @@ interface GymLink {
 https://conquerplank.app/gym/join?id={gymId}&ref={referralCode}
 ```
 
-## 3.3 New Files to Create
+## 3.3 Authentication with Privy
+
+- Use `usePrivy()` and `useUser()` hooks for authenticated user ID/wallet
+- All check-in actions require user authentication first
+- Get user ID via `user.id` or wallet address via embedded wallet
+
+## 3.4 Backend API Integration (Off-Chain Check-ins)
+
+| Endpoint | Method | Payload | Response |
+|----------|--------|---------|----------|
+| `/api/gym/check-in` | POST | `{ gymId, userId, qrSecret, userLocation }` | Success / Error |
+| `/api/gym/{id}` | GET | - | Gym details |
+| `/api/user/gym-link` | GET | - | User's linked gym info |
+
+**Response Codes:**
+- `200`: Check-in successful, returns aura reward
+- `409`: Already checked in today
+- `403`: Too far from gym location
+- `404`: Invalid gym ID
+
+## 3.5 New Files to Create
+
+### `src/services/gymService.ts`
+- `checkInToGym(gymId, qrSecret, location)` - POST to `/api/gym/check-in`
+- `getGymDetails(gymId)` - GET gym info from backend
+- `getUserGymLink()` - GET user's current gym link
 
 ### `src/pages/GymJoin.tsx`
-- Parse URL params for gym ID
-- Fetch gym details from contract
-- "Link to Gym" button (calls `linkUserToGym`)
-- "Claim Bonus" button (calls `claimSignupBonus`)
+- Parse URL params for gym ID and QR secret
+- Require Privy authentication before check-in
+- "Check In" button → calls `gymService.checkInToGym()`
+- Handle responses: success, already checked in, too far
+- Optional: "Claim Bonus" for on-chain signup bonus (10 PLANK)
 
 ### `src/pages/GymDashboard.tsx`
 - For gym owners to view their gym
@@ -195,7 +220,7 @@ https://conquerplank.app/gym/join?id={gymId}&ref={referralCode}
 
 ### `src/components/GymQRScanner.tsx`
 - Camera-based QR scanning (use `@yudiel/react-qr-scanner`)
-- Parse URL and extract gym ID
+- Parse URL and extract gym ID + qrSecret
 - Redirect to GymJoin page
 
 ## 3.4 Router Update
@@ -204,11 +229,60 @@ Add to `src/App.tsx`:
 - Route: `/gym/join` → GymJoin
 - Route: `/gym/dashboard` → GymDashboard
 
-## 3.5 Verification
+## 3.7 Verification
 - [ ] Scan QR code successfully
-- [ ] Link user to gym on-chain
-- [ ] Claim signup bonus (10 PLANK)
-- [ ] Gym points increase after user sessions
+- [ ] User must be authenticated via Privy to check in
+- [ ] Check-in calls backend API (not on-chain)
+- [ ] Handle "already checked in today" response
+- [ ] Handle "too far from gym" response
+- [ ] Optional: Claim signup bonus on-chain (10 PLANK)
+
+## 3.6 Implementation Tasks
+
+### 3.6.1 Data Model & Types
+- [x] Add `Gym` interface to `src/lib/gameData.ts`
+- [x] Add `GymLink` interface to `src/lib/gameData.ts`
+- [ ] Add gym-related state to GameContext (linkedGym, gyms list)
+
+### 3.6.2 QR Scanner Component
+- [x] Install QR scanner dependency (`@yudiel/react-qr-scanner`)
+- [x] Create `src/components/GymQRScanner.tsx`
+  - [x] Camera permission handling
+  - [x] QR code scanning with visual feedback
+  - [x] Parse gym URL: `https://conquerplank.app/gym/join?id={gymId}&ref={referralCode}`
+  - [x] Redirect to GymJoin page with parsed params
+
+### 3.6.3 GymJoin Page
+- [x] Create `src/pages/GymJoin.tsx`
+  - [x] Parse URL params for gym ID and qrSecret
+  - [x] Require Privy auth (`usePrivy` hook)
+  - [x] Fetch gym details from backend API
+  - [x] Display gym info card
+  - [x] "Check In" button → calls `gymService.checkInToGym()`
+  - [x] Handle API responses (success, already checked in, too far)
+  - [ ] Optional: "Claim Bonus" for on-chain 10 PLANK
+
+### 3.6.4 GymDashboard Page (Gym Owners)
+- [x] Create `src/pages/GymDashboard.tsx`
+  - [x] Gym owner registration form (`registerGym(name)`)
+  - [x] Display gym stats: linked users, total points
+  - [x] QR code generation (use `qrcode.react`)
+  - [x] Copy link to clipboard functionality
+
+### 3.6.5 Router & Navigation Updates
+- [x] Add route `/gym/join` → GymJoin page
+- [x] Add route `/gym/dashboard` → GymDashboard page
+- [x] Add "Scan Gym QR" button to main menu/home
+- [x] Add "My Gym" link for gym owners
+
+### 3.6.6 API & Backend Integration
+- [x] Create `src/services/gymService.ts` (implemented as `useGymApi.ts` hook):
+  - [x] `checkInToGym(gymId, qrSecret, location)` - POST `/api/gym/check-in`
+  - [x] `getGymDetails(gymId)` - GET `/api/gym/{id}`
+  - [x] `getUserGymLink()` - GET `/api/user/gym-link`
+- [x] Add Privy auth headers to API requests
+- [ ] Optional contract integration:
+  - [ ] `claimSignupBonus()` - On-chain 10 PLANK claim (if kept on-chain)
 
 ---
 

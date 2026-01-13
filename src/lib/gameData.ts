@@ -38,6 +38,21 @@ export interface SessionResult {
   lifeTimeGained: string;
 }
 
+// Gym interfaces for QR code referral system (aligned with backend schema)
+export interface Gym {
+  id: number;              // Numeric ID to match backend
+  name: string;
+  address: string;         // For display purposes
+  rewardAuraFixed: number; // Mapping from reward_aura_fixed
+  isActive: boolean;
+}
+
+export interface GymLink {
+  gymId: number;
+  linkedAt: string;        // ISO Date string
+  lastCheckin: string;     // ISO Date string for daily validation
+}
+
 // Greek-themed guild names
 export const mockGuilds: Guild[] = [
   {
