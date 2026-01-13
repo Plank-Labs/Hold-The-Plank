@@ -1,7 +1,20 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+  useEffect,
+} from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits, formatUnits } from "viem";
+import {
+  useAccount,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useWatchContractEvent,
+} from "wagmi";
+import { formatUnits } from "viem";
 import {
   UserProfile,
   Guild,
@@ -17,7 +30,12 @@ import {
   plankTokenAbi,
   relicsAbi,
   RELIC_TOKENS,
+  type PendingReward,
+  type RelicSignatureResponse,
 } from "@/lib/contracts";
+
+// API base URL
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface GameContextType {
   // Wallet state
@@ -39,12 +57,21 @@ interface GameContextType {
 
   // Session state
   completeSession: (validSeconds: number) => SessionResult;
-  claimPlank: () => Promise<boolean>;
-  pendingPlankReward: number;
-  isClaimingPlank: boolean;
 
-  mintNFT: (relicId?: bigint) => Promise<boolean>;
-  isMintingNFT: boolean;
+  // Pending rewards (relayer-based)
+  pendingRewards: PendingReward[];
+  totalPendingPlank: bigint;
+  fetchPendingRewards: () => Promise<void>;
+  isLoadingPendingRewards: boolean;
+
+  // Relic minting (signature-based)
+  mintRelic: (tokenId: number) => Promise<boolean>;
+  isMintingRelic: boolean;
+  mintingRelicId: number | null;
+
+  // Check relic claim status
+  claimedRelics: boolean[];
+  fetchClaimedRelics: () => Promise<void>;
 
   // Token balance (on-chain)
   plankBalance: bigint;
@@ -57,50 +84,141 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { login, logout, authenticated, ready, user: privyUser } = usePrivy();
+export const GameProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const {
+    login,
+    logout,
+    authenticated,
+    ready,
+    user: privyUser,
+    getAccessToken,
+  } = usePrivy();
   const { address, isConnected: wagmiConnected } = useAccount();
 
   const [user, setUser] = useState<UserProfile>(defaultUser);
   const [guilds, setGuilds] = useState<Guild[]>(mockGuilds);
-  const [pendingPlankReward, setPendingPlankReward] = useState(0);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
 
+  // Pending rewards state
+  const [pendingRewards, setPendingRewards] = useState<PendingReward[]>([]);
+  const [isLoadingPendingRewards, setIsLoadingPendingRewards] = useState(false);
+
+  // Relic minting state
+  const [mintingRelicId, setMintingRelicId] = useState<number | null>(null);
+  const [claimedRelics, setClaimedRelics] = useState<boolean[]>([
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+
   // Contract interactions
-  const { writeContract, data: txHash, isPending: isWritePending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
+  const {
+    writeContract,
+    data: txHash,
+    isPending: isWritePending,
+    reset: resetWriteContract,
+  } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash: txHash,
+    });
 
   // Read PLANK balance from contract
-  const { data: plankBalanceData, isLoading: isLoadingBalance, refetch: refetchBalance } = useReadContract({
+  const {
+    data: plankBalanceData,
+    isLoading: isLoadingBalance,
+    refetch: refetchBalance,
+  } = useReadContract({
     address: CONTRACT_ADDRESSES.plankToken,
     abi: plankTokenAbi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && CONTRACT_ADDRESSES.plankToken !== "0x0000000000000000000000000000000000000000",
+      enabled:
+        !!address &&
+        CONTRACT_ADDRESSES.plankToken !==
+          "0x0000000000000000000000000000000000000000",
     },
   });
 
-  const plankBalance = plankBalanceData ?? 0n;
-  const isClaimingPlank = isWritePending || isConfirming;
-  const isMintingNFT = isWritePending || isConfirming;
+  // Read claimed relics from contract
+  const { data: claimedRelicsData, refetch: refetchClaimedRelics } =
+    useReadContract({
+      address: CONTRACT_ADDRESSES.relics,
+      abi: relicsAbi,
+      functionName: "getClaimedRelics",
+      args: address ? [address] : undefined,
+      query: {
+        enabled:
+          !!address &&
+          CONTRACT_ADDRESSES.relics !==
+            "0x0000000000000000000000000000000000000000",
+      },
+    });
 
-  // Derived state - more robust connection check
-  // We are "connected" if Privy is authenticated
+  const plankBalance = plankBalanceData ?? 0n;
+  const isMintingRelic = isWritePending || isConfirming;
+
+  // Calculate total pending PLANK
+  const totalPendingPlank = pendingRewards
+    .filter((r) => r.status === "pending" || r.status === "processing")
+    .reduce((sum, r) => sum + r.amount, 0n);
+
+  // Derived state - we are "connected" if Privy is authenticated
   const isConnected = authenticated;
 
   // Find a wallet address from any source
   const getWalletAddress = () => {
     if (address) return address;
     if (privyUser?.wallet?.address) return privyUser.wallet.address;
-    const linkedWallet = privyUser?.linkedAccounts?.find(a => a.type === 'wallet');
-    if (linkedWallet && 'address' in linkedWallet) return linkedWallet.address as string;
+    const linkedWallet = privyUser?.linkedAccounts?.find(
+      (a) => a.type === "wallet"
+    );
+    if (linkedWallet && "address" in linkedWallet)
+      return linkedWallet.address as string;
     return "";
   };
 
   const walletAddress = getWalletAddress();
+
+  // Watch for PlankMinted events to update balance
+  useWatchContractEvent({
+    address: CONTRACT_ADDRESSES.plankToken,
+    abi: plankTokenAbi,
+    eventName: "PlankMinted",
+    args: { to: address },
+    enabled:
+      !!address &&
+      CONTRACT_ADDRESSES.plankToken !==
+        "0x0000000000000000000000000000000000000000",
+    onLogs: () => {
+      refetchBalance();
+      // Also refresh pending rewards since one might have been processed
+      fetchPendingRewards();
+    },
+  });
+
+  // Watch for RelicMinted events
+  useWatchContractEvent({
+    address: CONTRACT_ADDRESSES.relics,
+    abi: relicsAbi,
+    eventName: "RelicMinted",
+    args: { to: address },
+    enabled:
+      !!address &&
+      CONTRACT_ADDRESSES.relics !==
+        "0x0000000000000000000000000000000000000000",
+    onLogs: () => {
+      refetchClaimedRelics();
+      setMintingRelicId(null);
+      resetWriteContract();
+    },
+  });
 
   // Sync user profile with wallet connection
   useEffect(() => {
@@ -109,21 +227,64 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...prev,
         walletAddress: walletAddress,
         username: prev.username || `Warrior_${walletAddress.slice(2, 6)}`,
-        // Convert on-chain balance to display format (assuming 18 decimals)
         plankBalance: Number(formatUnits(plankBalance, 18)),
       }));
     } else if (ready && !authenticated) {
       setUser(defaultUser);
-      setPendingPlankReward(0);
+      setPendingRewards([]);
     }
   }, [authenticated, walletAddress, plankBalance, ready]);
+
+  // Sync claimed relics from contract
+  useEffect(() => {
+    if (claimedRelicsData) {
+      setClaimedRelics([...claimedRelicsData]);
+    }
+  }, [claimedRelicsData]);
 
   // Refetch balance when transaction confirms
   useEffect(() => {
     if (isConfirmed) {
       refetchBalance();
+      refetchClaimedRelics();
     }
-  }, [isConfirmed, refetchBalance]);
+  }, [isConfirmed, refetchBalance, refetchClaimedRelics]);
+
+  // Fetch pending rewards from API
+  const fetchPendingRewards = useCallback(async () => {
+    if (!authenticated || !walletAddress) return;
+
+    setIsLoadingPendingRewards(true);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(`${API_URL}/api/users/pending-rewards`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPendingRewards(
+          data.rewards.map((r: { amount: string } & Omit<PendingReward, "amount">) => ({
+            ...r,
+            amount: BigInt(r.amount),
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch pending rewards:", error);
+    } finally {
+      setIsLoadingPendingRewards(false);
+    }
+  }, [authenticated, walletAddress, getAccessToken]);
+
+  // Fetch claimed relics
+  const fetchClaimedRelics = useCallback(async () => {
+    if (address) {
+      refetchClaimedRelics();
+    }
+  }, [address, refetchClaimedRelics]);
 
   // Connect wallet using Privy
   const connectWallet = useCallback(async () => {
@@ -141,25 +302,34 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Get user's guild
-  const userGuild = user.guildId ? guilds.find((g) => g.id === user.guildId) || null : null;
+  const userGuild = user.guildId
+    ? guilds.find((g) => g.id === user.guildId) || null
+    : null;
 
-  const joinGuild = useCallback((guildId: string) => {
-    setUser((prev) => ({ ...prev, guildId }));
-    setGuilds((prev) =>
-      prev.map((g) =>
-        g.id === guildId
-          ? {
-            ...g,
-            memberCount: g.memberCount + 1,
-            members: [
-              ...g.members,
-              { username: user.username, walletAddress: user.walletAddress, timeContributed: 0 },
-            ],
-          }
-          : g
-      )
-    );
-  }, [user.username, user.walletAddress]);
+  const joinGuild = useCallback(
+    (guildId: string) => {
+      setUser((prev) => ({ ...prev, guildId }));
+      setGuilds((prev) =>
+        prev.map((g) =>
+          g.id === guildId
+            ? {
+                ...g,
+                memberCount: g.memberCount + 1,
+                members: [
+                  ...g.members,
+                  {
+                    username: user.username,
+                    walletAddress: user.walletAddress,
+                    timeContributed: 0,
+                  },
+                ],
+              }
+            : g
+        )
+      );
+    },
+    [user.username, user.walletAddress]
+  );
 
   const leaveGuild = useCallback(() => {
     if (user.guildId) {
@@ -167,10 +337,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         prev.map((g) =>
           g.id === user.guildId
             ? {
-              ...g,
-              memberCount: g.memberCount - 1,
-              members: g.members.filter((m) => m.walletAddress !== user.walletAddress),
-            }
+                ...g,
+                memberCount: g.memberCount - 1,
+                members: g.members.filter(
+                  (m) => m.walletAddress !== user.walletAddress
+                ),
+              }
             : g
         )
       );
@@ -178,143 +350,175 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [user.guildId, user.walletAddress]);
 
-  const createGuild = useCallback((name: string, emblem: string, description: string) => {
-    const newGuild: Guild = {
-      id: name.toLowerCase().replace(/\s+/g, "-"),
-      name,
-      emblem,
-      description,
-      totalTimeConquered: 0,
-      memberCount: 1,
-      members: [{ username: user.username, walletAddress: user.walletAddress, timeContributed: 0 }],
-    };
-    setGuilds((prev) => [...prev, newGuild]);
-    setUser((prev) => ({ ...prev, guildId: newGuild.id }));
-  }, [user.username, user.walletAddress]);
+  const createGuild = useCallback(
+    (name: string, emblem: string, description: string) => {
+      const newGuild: Guild = {
+        id: name.toLowerCase().replace(/\s+/g, "-"),
+        name,
+        emblem,
+        description,
+        totalTimeConquered: 0,
+        memberCount: 1,
+        members: [
+          {
+            username: user.username,
+            walletAddress: user.walletAddress,
+            timeContributed: 0,
+          },
+        ],
+      };
+      setGuilds((prev) => [...prev, newGuild]);
+      setUser((prev) => ({ ...prev, guildId: newGuild.id }));
+    },
+    [user.username, user.walletAddress]
+  );
 
-  // Complete a plank session
-  const completeSession = useCallback((validSeconds: number): SessionResult => {
-    const auraPointsGained = calculateAuraPoints(validSeconds);
-    const plankReward = calculatePlankReward(validSeconds);
-    const lifeTimeGained = calculateLifeTimeGained(validSeconds);
-    const today = new Date().toDateString();
+  // Complete a plank session - rewards are now queued by backend relayer
+  const completeSession = useCallback(
+    (validSeconds: number): SessionResult => {
+      const auraPointsGained = calculateAuraPoints(validSeconds);
+      const plankReward = calculatePlankReward(validSeconds);
+      const lifeTimeGained = calculateLifeTimeGained(validSeconds);
+      const today = new Date().toDateString();
 
-    // Update user stats
-    setUser((prev) => {
-      const isNewDay = prev.lastSessionDate !== today;
-      const newStreak = isNewDay ? prev.currentStreakDays + 1 : prev.currentStreakDays;
+      // Update user stats locally
+      setUser((prev) => {
+        const isNewDay = prev.lastSessionDate !== today;
+        const newStreak = isNewDay
+          ? prev.currentStreakDays + 1
+          : prev.currentStreakDays;
+
+        return {
+          ...prev,
+          bestPlankTime: Math.max(prev.bestPlankTime, validSeconds),
+          totalTimeConquered: prev.totalTimeConquered + validSeconds,
+          auraPoints: prev.auraPoints + auraPointsGained,
+          currentStreakDays:
+            validSeconds >= 30 ? newStreak : prev.currentStreakDays,
+          longestStreakDays: Math.max(prev.longestStreakDays, newStreak),
+          lastSessionDate: today,
+        };
+      });
+
+      // Update guild stats
+      if (user.guildId) {
+        setGuilds((prev) =>
+          prev.map((g) =>
+            g.id === user.guildId
+              ? {
+                  ...g,
+                  totalTimeConquered: g.totalTimeConquered + validSeconds,
+                  members: g.members.map((m) =>
+                    m.walletAddress === user.walletAddress
+                      ? { ...m, timeContributed: m.timeContributed + validSeconds }
+                      : m
+                  ),
+                }
+              : g
+          )
+        );
+      }
+
+      // Refresh pending rewards after session completes
+      // (Backend will have queued the reward)
+      setTimeout(() => fetchPendingRewards(), 1000);
 
       return {
-        ...prev,
-        bestPlankTime: Math.max(prev.bestPlankTime, validSeconds),
-        totalTimeConquered: prev.totalTimeConquered + validSeconds,
-        auraPoints: prev.auraPoints + auraPointsGained,
-        currentStreakDays: validSeconds >= 30 ? newStreak : prev.currentStreakDays,
-        longestStreakDays: Math.max(prev.longestStreakDays, newStreak),
-        lastSessionDate: today,
+        validTimeSeconds: validSeconds,
+        auraPointsGained,
+        plankReward,
+        lifeTimeGained,
       };
-    });
+    },
+    [user.guildId, user.walletAddress, fetchPendingRewards]
+  );
 
-    // Update guild stats
-    if (user.guildId) {
-      setGuilds((prev) =>
-        prev.map((g) =>
-          g.id === user.guildId
-            ? {
-              ...g,
-              totalTimeConquered: g.totalTimeConquered + validSeconds,
-              members: g.members.map((m) =>
-                m.walletAddress === user.walletAddress
-                  ? { ...m, timeContributed: m.timeContributed + validSeconds }
-                  : m
-              ),
-            }
-            : g
-        )
+  // Mint a relic using signature from backend
+  const mintRelic = useCallback(
+    async (tokenId: number): Promise<boolean> => {
+      if (!address || !authenticated) return false;
+
+      // Find the relic and check eligibility
+      const relic = Object.values(RELIC_TOKENS).find(
+        (r) => Number(r.id) === tokenId
       );
-    }
+      if (!relic || user.totalTimeConquered < relic.requirement) {
+        console.error("Not eligible for this relic");
+        return false;
+      }
 
-    setPendingPlankReward(plankReward);
+      // Check if already claimed
+      if (claimedRelics[tokenId - 1]) {
+        console.error("Relic already claimed");
+        return false;
+      }
 
-    return {
-      validTimeSeconds: validSeconds,
-      auraPointsGained,
-      plankReward,
-      lifeTimeGained,
-    };
-  }, [user.guildId, user.walletAddress]);
+      // Check if contracts are deployed
+      if (
+        CONTRACT_ADDRESSES.relics ===
+        "0x0000000000000000000000000000000000000000"
+      ) {
+        // Fallback to mock behavior if contracts not deployed
+        console.warn("Relics contract not deployed. Using mock mint.");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        setClaimedRelics((prev) => {
+          const newClaimed = [...prev];
+          newClaimed[tokenId - 1] = true;
+          return newClaimed;
+        });
+        setUser((prev) => ({ ...prev, hasNFT: true }));
+        return true;
+      }
 
-  // Claim $PLANK reward via smart contract
-  const claimPlank = useCallback(async (): Promise<boolean> => {
-    if (pendingPlankReward <= 0 || !address) return false;
+      try {
+        setMintingRelicId(tokenId);
 
-    // Check if contracts are deployed
-    if (CONTRACT_ADDRESSES.plankToken === "0x0000000000000000000000000000000000000000") {
-      // Fallback to mock behavior if contracts not deployed
-      console.warn("PlankToken contract not deployed. Using mock claim.");
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setUser((prev) => ({
-        ...prev,
-        plankBalance: prev.plankBalance + pendingPlankReward,
-      }));
-      setPendingPlankReward(0);
-      return true;
-    }
+        // 1. Request signature from backend
+        const token = await getAccessToken();
+        const signatureResponse = await fetch(
+          `${API_URL}/api/relics/request-signature`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ tokenId }),
+          }
+        );
 
-    try {
-      // Call mint function on PlankToken contract
-      // Note: In production, this would be called by an authorized minter (backend/relayer)
-      writeContract({
-        address: CONTRACT_ADDRESSES.plankToken,
-        abi: plankTokenAbi,
-        functionName: "mint",
-        args: [address, parseUnits(pendingPlankReward.toString(), 18)],
-      });
+        if (!signatureResponse.ok) {
+          const error = await signatureResponse.json();
+          throw new Error(error.message || "Failed to get signature");
+        }
 
-      // Wait for confirmation is handled by useWaitForTransactionReceipt
-      // The useEffect above will refetch balance on confirmation
-      setPendingPlankReward(0);
-      return true;
-    } catch (error) {
-      console.error("Failed to claim PLANK:", error);
-      return false;
-    }
-  }, [pendingPlankReward, address, writeContract]);
+        const sigData: RelicSignatureResponse = await signatureResponse.json();
 
-  // Mint NFT (Relic) via smart contract
-  const mintNFT = useCallback(async (relicId: bigint = RELIC_TOKENS.BRONZE_SHIELD.id): Promise<boolean> => {
-    if (!address) return false;
+        // 2. Submit to contract
+        writeContract({
+          address: CONTRACT_ADDRESSES.relics,
+          abi: relicsAbi,
+          functionName: "mintWithSignature",
+          args: [BigInt(tokenId), sigData.deadline, sigData.signature],
+        });
 
-    // Find the relic and check eligibility
-    const relic = Object.values(RELIC_TOKENS).find((r) => r.id === relicId);
-    if (!relic || user.totalTimeConquered < relic.requirement) {
-      return false;
-    }
-
-    // Check if contracts are deployed
-    if (CONTRACT_ADDRESSES.relics === "0x0000000000000000000000000000000000000000") {
-      // Fallback to mock behavior if contracts not deployed
-      console.warn("Relics contract not deployed. Using mock mint.");
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setUser((prev) => ({ ...prev, hasNFT: true }));
-      return true;
-    }
-
-    try {
-      writeContract({
-        address: CONTRACT_ADDRESSES.relics,
-        abi: relicsAbi,
-        functionName: "mint",
-        args: [address, relicId, 1n, "0x"],
-      });
-
-      setUser((prev) => ({ ...prev, hasNFT: true }));
-      return true;
-    } catch (error) {
-      console.error("Failed to mint NFT:", error);
-      return false;
-    }
-  }, [address, user.totalTimeConquered, writeContract]);
+        // Transaction confirmation is handled by useWatchContractEvent
+        return true;
+      } catch (error) {
+        console.error("Failed to mint relic:", error);
+        setMintingRelicId(null);
+        return false;
+      }
+    },
+    [
+      address,
+      authenticated,
+      user.totalTimeConquered,
+      claimedRelics,
+      writeContract,
+      getAccessToken,
+    ]
+  );
 
   return (
     <GameContext.Provider
@@ -331,11 +535,15 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         leaveGuild,
         createGuild,
         completeSession,
-        claimPlank,
-        pendingPlankReward,
-        isClaimingPlank,
-        mintNFT,
-        isMintingNFT,
+        pendingRewards,
+        totalPendingPlank,
+        fetchPendingRewards,
+        isLoadingPendingRewards,
+        mintRelic,
+        isMintingRelic,
+        mintingRelicId,
+        claimedRelics,
+        fetchClaimedRelics,
         plankBalance,
         isLoadingBalance,
         hasSeenOnboarding,
