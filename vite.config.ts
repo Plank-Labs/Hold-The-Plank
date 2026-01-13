@@ -28,4 +28,12 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      external: ['@solana-program/system'],
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@solana-program/system'],
+  },
 }));
