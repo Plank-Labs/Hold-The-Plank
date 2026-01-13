@@ -25,7 +25,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
     <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
+      <WagmiProvider config={wagmiConfig} reconnectOnMount={true}>
         <TooltipProvider>
           <GameProvider>
             <Toaster />

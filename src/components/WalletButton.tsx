@@ -27,7 +27,7 @@ const WalletButton: React.FC = () => {
     }
   };
 
-  // Show loading state while Privy initializes
+  // Show loading state only while Privy initializes
   if (!ready) {
     return (
       <GreekButton variant="secondary" size="md" disabled className="gap-2">
@@ -37,7 +37,7 @@ const WalletButton: React.FC = () => {
     );
   }
 
-  if (!isConnected || !authenticated) {
+  if (!authenticated) {
     return (
       <GreekButton
         variant="primary"
@@ -84,7 +84,7 @@ const WalletButton: React.FC = () => {
           <div className="text-left hidden sm:block">
             <p className="text-sm font-medium text-foreground">{user.username}</p>
             <p className="text-xs text-muted-foreground">
-              {shortenAddress(walletAddress)}
+              {walletAddress ? shortenAddress(walletAddress) : "Connected"}
             </p>
           </div>
         </motion.button>

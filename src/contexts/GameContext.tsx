@@ -59,7 +59,7 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { login, logout, authenticated, ready } = usePrivy();
+  const { login, logout, authenticated, ready, user: privyUser } = usePrivy();
   const { address, isConnected: wagmiConnected } = useAccount();
 
   const [user, setUser] = useState<UserProfile>(defaultUser);
@@ -88,25 +88,36 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const isClaimingPlank = isWritePending || isConfirming;
   const isMintingNFT = isWritePending || isConfirming;
 
-  // Derived state
-  const isConnected = authenticated && wagmiConnected;
-  const walletAddress = address ?? "";
+  // Derived state - more robust connection check
+  // We are "connected" if Privy is authenticated
+  const isConnected = authenticated;
+
+  // Find a wallet address from any source
+  const getWalletAddress = () => {
+    if (address) return address;
+    if (privyUser?.wallet?.address) return privyUser.wallet.address;
+    const linkedWallet = privyUser?.linkedAccounts?.find(a => a.type === 'wallet');
+    if (linkedWallet && 'address' in linkedWallet) return linkedWallet.address as string;
+    return "";
+  };
+
+  const walletAddress = getWalletAddress();
 
   // Sync user profile with wallet connection
   useEffect(() => {
-    if (isConnected && address) {
+    if (authenticated && walletAddress) {
       setUser((prev) => ({
         ...prev,
-        walletAddress: address,
-        username: prev.username || `Warrior_${address.slice(2, 6)}`,
+        walletAddress: walletAddress,
+        username: prev.username || `Warrior_${walletAddress.slice(2, 6)}`,
         // Convert on-chain balance to display format (assuming 18 decimals)
         plankBalance: Number(formatUnits(plankBalance, 18)),
       }));
-    } else {
+    } else if (ready && !authenticated) {
       setUser(defaultUser);
       setPendingPlankReward(0);
     }
-  }, [isConnected, address, plankBalance]);
+  }, [authenticated, walletAddress, plankBalance, ready]);
 
   // Refetch balance when transaction confirms
   useEffect(() => {
@@ -139,13 +150,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       prev.map((g) =>
         g.id === guildId
           ? {
-              ...g,
-              memberCount: g.memberCount + 1,
-              members: [
-                ...g.members,
-                { username: user.username, walletAddress: user.walletAddress, timeContributed: 0 },
-              ],
-            }
+            ...g,
+            memberCount: g.memberCount + 1,
+            members: [
+              ...g.members,
+              { username: user.username, walletAddress: user.walletAddress, timeContributed: 0 },
+            ],
+          }
           : g
       )
     );
@@ -157,10 +168,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         prev.map((g) =>
           g.id === user.guildId
             ? {
-                ...g,
-                memberCount: g.memberCount - 1,
-                members: g.members.filter((m) => m.walletAddress !== user.walletAddress),
-              }
+              ...g,
+              memberCount: g.memberCount - 1,
+              members: g.members.filter((m) => m.walletAddress !== user.walletAddress),
+            }
             : g
         )
       );
@@ -211,14 +222,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         prev.map((g) =>
           g.id === user.guildId
             ? {
-                ...g,
-                totalTimeConquered: g.totalTimeConquered + validSeconds,
-                members: g.members.map((m) =>
-                  m.walletAddress === user.walletAddress
-                    ? { ...m, timeContributed: m.timeContributed + validSeconds }
-                    : m
-                ),
-              }
+              ...g,
+              totalTimeConquered: g.totalTimeConquered + validSeconds,
+              members: g.members.map((m) =>
+                m.walletAddress === user.walletAddress
+                  ? { ...m, timeContributed: m.timeContributed + validSeconds }
+                  : m
+              ),
+            }
             : g
         )
       );
