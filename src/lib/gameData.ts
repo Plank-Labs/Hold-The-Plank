@@ -45,6 +45,16 @@ export interface Gym {
   address: string;         // For display purposes
   rewardAuraFixed: number; // Mapping from reward_aura_fixed
   isActive: boolean;
+  totalAuraGenerated?: number;
+  totalMembers?: number;
+  members?: GymMemberActivity[];
+}
+
+export interface GymMemberActivity {
+  userId: string;
+  username: string;
+  auraEarned: number;
+  lastCheckin: string; // ISO Date
 }
 
 export interface GymLink {
@@ -211,4 +221,33 @@ export const MOCK_GYM: Gym = {
   address: "777 Mt. Olympus Way, Peak City",
   rewardAuraFixed: 50,
   isActive: true,
+  totalAuraGenerated: 12450,
+  totalMembers: 86,
 };
+
+export const MOCK_MEMBERS: GymMemberActivity[] = [
+  { userId: "user_1", username: "Achilles_99", auraEarned: 450, lastCheckin: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
+  { userId: "user_2", username: "Athena_Warrior", auraEarned: 320, lastCheckin: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
+  { userId: "user_3", username: "Herc_The_Great", auraEarned: 890, lastCheckin: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() },
+  { userId: "user_4", username: "PlankMaster", auraEarned: 150, lastCheckin: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
+  { userId: "user_5", username: "Swift_Hermes", auraEarned: 610, lastCheckin: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() },
+  { userId: "user_6", username: "Iron_Ajax", auraEarned: 280, lastCheckin: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString() },
+];
+
+export const MOCK_GYMS: Gym[] = [
+  {
+    ...MOCK_GYM,
+    id: 1,
+    members: MOCK_MEMBERS,
+  },
+  {
+    id: 2,
+    name: "Spartan Iron Pit",
+    address: "300 Leonidas Ave, Sparta",
+    rewardAuraFixed: 75,
+    isActive: true,
+    totalAuraGenerated: 8900,
+    totalMembers: 42,
+    members: MOCK_MEMBERS.slice(0, 3)
+  }
+];
