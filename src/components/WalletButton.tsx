@@ -1,19 +1,21 @@
+import { usePrivy } from "@privy-io/react-auth";
 import { useGame } from "@/contexts/GameContext";
 import { GreekButton } from "./ui/greek-button";
 import { shortenAddress } from "@/lib/gameData";
-import { Wallet, LogOut, Loader2 } from "lucide-react";
+import { Wallet, LogOut, Loader2, Mail, User } from "lucide-react";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 
 const WalletButton: React.FC = () => {
-  const { isConnected, walletAddress, connectWallet, disconnectWallet, user } =
-    useGame();
+  const { ready, authenticated, user: privyUser } = usePrivy();
+  const { isConnected, walletAddress, connectWallet, disconnectWallet, user } = useGame();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async () => {
@@ -25,7 +27,17 @@ const WalletButton: React.FC = () => {
     }
   };
 
-  if (!isConnected) {
+  // Show loading state while Privy initializes
+  if (!ready) {
+    return (
+      <GreekButton variant="secondary" size="md" disabled className="gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Loading...
+      </GreekButton>
+    );
+  }
+
+  if (!isConnected || !authenticated) {
     return (
       <GreekButton
         variant="primary"
@@ -42,12 +54,21 @@ const WalletButton: React.FC = () => {
         ) : (
           <>
             <Wallet className="w-4 h-4" />
-            Connect Wallet
+            Connect
           </>
         )}
       </GreekButton>
     );
   }
+
+  // Get linked account info from Privy
+  const linkedEmail = privyUser?.email?.address;
+  const linkedGoogle = privyUser?.google?.email;
+  const linkedTwitter = privyUser?.twitter?.username;
+  const linkedWallet = privyUser?.wallet?.address;
+
+  // Determine the display name/email
+  const displayAccount = linkedEmail || linkedGoogle || (linkedTwitter ? `@${linkedTwitter}` : null);
 
   return (
     <DropdownMenu>
@@ -68,7 +89,42 @@ const WalletButton: React.FC = () => {
           </div>
         </motion.button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-56">
+        {/* Network Status */}
+        <div className="px-2 py-1.5">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            Mantle Sepolia
+          </div>
+        </div>
+
+        <DropdownMenuSeparator />
+
+        {/* Linked Accounts */}
+        {displayAccount && (
+          <div className="px-2 py-1.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {linkedEmail || linkedGoogle ? (
+                <Mail className="w-3 h-3" />
+              ) : (
+                <User className="w-3 h-3" />
+              )}
+              {displayAccount}
+            </div>
+          </div>
+        )}
+
+        {linkedWallet && linkedWallet !== walletAddress && (
+          <div className="px-2 py-1.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Wallet className="w-3 h-3" />
+              {shortenAddress(linkedWallet)}
+            </div>
+          </div>
+        )}
+
+        <DropdownMenuSeparator />
+
         <DropdownMenuItem
           onClick={disconnectWallet}
           className="text-destructive focus:text-destructive cursor-pointer"

@@ -3,7 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { WagmiProvider } from "@privy-io/wagmi";
 import { GameProvider } from "@/contexts/GameContext";
+import { PRIVY_APP_ID, privyConfig } from "@/lib/privy";
+import { wagmiConfig } from "@/lib/wagmi";
 import Index from "./pages/Index";
 import PlankTechnique from "./pages/PlankTechnique";
 import PlankSession from "./pages/PlankSession";
@@ -16,26 +20,30 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <GameProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/plank/technique" element={<PlankTechnique />} />
-            <Route path="/plank/session" element={<PlankSession />} />
-            <Route path="/plank/result" element={<PlankResult />} />
-            <Route path="/rankings" element={<Rankings />} />
-            <Route path="/guild" element={<GuildDetail />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </GameProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
+    <QueryClientProvider client={queryClient}>
+      <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
+        <TooltipProvider>
+          <GameProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/plank/technique" element={<PlankTechnique />} />
+                <Route path="/plank/session" element={<PlankSession />} />
+                <Route path="/plank/result" element={<PlankResult />} />
+                <Route path="/rankings" element={<Rankings />} />
+                <Route path="/guild" element={<GuildDetail />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </GameProvider>
+        </TooltipProvider>
+      </WagmiProvider>
+    </QueryClientProvider>
+  </PrivyProvider>
 );
 
 export default App;

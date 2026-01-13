@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { parseUnits, formatUnits } from "viem";
 import {
   UserProfile,
   Guild,
@@ -9,6 +12,12 @@ import {
   calculateLifeTimeGained,
   SessionResult,
 } from "@/lib/gameData";
+import {
+  CONTRACT_ADDRESSES,
+  plankTokenAbi,
+  relicsAbi,
+  RELIC_TOKENS,
+} from "@/lib/contracts";
 
 interface GameContextType {
   // Wallet state
@@ -20,7 +29,7 @@ interface GameContextType {
   // User state
   user: UserProfile;
   updateUsername: (name: string) => void;
-  
+
   // Guild state
   guilds: Guild[];
   userGuild: Guild | null;
@@ -32,10 +41,16 @@ interface GameContextType {
   completeSession: (validSeconds: number) => SessionResult;
   claimPlank: () => Promise<boolean>;
   pendingPlankReward: number;
+  isClaimingPlank: boolean;
 
   // NFT state
-  mintNFT: () => Promise<boolean>;
-  
+  mintNFT: (relicId?: bigint) => Promise<boolean>;
+  isMintingNFT: boolean;
+
+  // Token balance (on-chain)
+  plankBalance: bigint;
+  isLoadingBalance: boolean;
+
   // Onboarding
   hasSeenOnboarding: boolean;
   setHasSeenOnboarding: (seen: boolean) => void;
@@ -44,37 +59,72 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+  const { login, logout, authenticated, ready } = usePrivy();
+  const { address, isConnected: wagmiConnected } = useAccount();
+
   const [user, setUser] = useState<UserProfile>(defaultUser);
   const [guilds, setGuilds] = useState<Guild[]>(mockGuilds);
   const [pendingPlankReward, setPendingPlankReward] = useState(0);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
 
-  // Mock wallet connection
-  const connectWallet = useCallback(async () => {
-    // Simulate wallet connection delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const mockAddress = "0x" + Math.random().toString(16).slice(2, 10) + "..." + Math.random().toString(16).slice(2, 6);
-    const fullAddress = "0x" + Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join("");
-    
-    setWalletAddress(fullAddress);
-    setIsConnected(true);
-    setUser({
-      ...defaultUser,
-      walletAddress: fullAddress,
-      username: "Warrior_" + Math.floor(Math.random() * 9999),
-      plankBalance: Math.floor(Math.random() * 100), // Start with some mock balance
-    });
-  }, []);
+  // Contract interactions
+  const { writeContract, data: txHash, isPending: isWritePending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
 
+  // Read PLANK balance from contract
+  const { data: plankBalanceData, isLoading: isLoadingBalance, refetch: refetchBalance } = useReadContract({
+    address: CONTRACT_ADDRESSES.plankToken,
+    abi: plankTokenAbi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && CONTRACT_ADDRESSES.plankToken !== "0x0000000000000000000000000000000000000000",
+    },
+  });
+
+  const plankBalance = plankBalanceData ?? 0n;
+  const isClaimingPlank = isWritePending || isConfirming;
+  const isMintingNFT = isWritePending || isConfirming;
+
+  // Derived state
+  const isConnected = authenticated && wagmiConnected;
+  const walletAddress = address ?? "";
+
+  // Sync user profile with wallet connection
+  useEffect(() => {
+    if (isConnected && address) {
+      setUser((prev) => ({
+        ...prev,
+        walletAddress: address,
+        username: prev.username || `Warrior_${address.slice(2, 6)}`,
+        // Convert on-chain balance to display format (assuming 18 decimals)
+        plankBalance: Number(formatUnits(plankBalance, 18)),
+      }));
+    } else {
+      setUser(defaultUser);
+      setPendingPlankReward(0);
+    }
+  }, [isConnected, address, plankBalance]);
+
+  // Refetch balance when transaction confirms
+  useEffect(() => {
+    if (isConfirmed) {
+      refetchBalance();
+    }
+  }, [isConfirmed, refetchBalance]);
+
+  // Connect wallet using Privy
+  const connectWallet = useCallback(async () => {
+    if (!ready) return;
+    await login();
+  }, [login, ready]);
+
+  // Disconnect wallet
   const disconnectWallet = useCallback(() => {
-    setIsConnected(false);
-    setWalletAddress("");
-    setUser(defaultUser);
-    setPendingPlankReward(0);
-  }, []);
+    logout();
+  }, [logout]);
 
   const updateUsername = useCallback((name: string) => {
     setUser((prev) => ({ ...prev, username: name }));
@@ -143,7 +193,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser((prev) => {
       const isNewDay = prev.lastSessionDate !== today;
       const newStreak = isNewDay ? prev.currentStreakDays + 1 : prev.currentStreakDays;
-      
+
       return {
         ...prev,
         bestPlankTime: Math.max(prev.bestPlankTime, validSeconds),
@@ -184,33 +234,77 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [user.guildId, user.walletAddress]);
 
-  // Claim $PLANK reward (mock transaction)
+  // Claim $PLANK reward via smart contract
   const claimPlank = useCallback(async (): Promise<boolean> => {
-    if (pendingPlankReward <= 0) return false;
-    
-    // Simulate blockchain transaction
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    setUser((prev) => ({
-      ...prev,
-      plankBalance: prev.plankBalance + pendingPlankReward,
-    }));
-    setPendingPlankReward(0);
-    
-    return true;
-  }, [pendingPlankReward]);
+    if (pendingPlankReward <= 0 || !address) return false;
 
-  // Mint NFT (mock)
-  const mintNFT = useCallback(async (): Promise<boolean> => {
-    if (user.hasNFT) return false;
-    if (user.totalTimeConquered < 60) return false; // Need at least 1 minute
-    
-    // Simulate NFT minting
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    setUser((prev) => ({ ...prev, hasNFT: true }));
-    return true;
-  }, [user.hasNFT, user.totalTimeConquered]);
+    // Check if contracts are deployed
+    if (CONTRACT_ADDRESSES.plankToken === "0x0000000000000000000000000000000000000000") {
+      // Fallback to mock behavior if contracts not deployed
+      console.warn("PlankToken contract not deployed. Using mock claim.");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      setUser((prev) => ({
+        ...prev,
+        plankBalance: prev.plankBalance + pendingPlankReward,
+      }));
+      setPendingPlankReward(0);
+      return true;
+    }
+
+    try {
+      // Call mint function on PlankToken contract
+      // Note: In production, this would be called by an authorized minter (backend/relayer)
+      writeContract({
+        address: CONTRACT_ADDRESSES.plankToken,
+        abi: plankTokenAbi,
+        functionName: "mint",
+        args: [address, parseUnits(pendingPlankReward.toString(), 18)],
+      });
+
+      // Wait for confirmation is handled by useWaitForTransactionReceipt
+      // The useEffect above will refetch balance on confirmation
+      setPendingPlankReward(0);
+      return true;
+    } catch (error) {
+      console.error("Failed to claim PLANK:", error);
+      return false;
+    }
+  }, [pendingPlankReward, address, writeContract]);
+
+  // Mint NFT (Relic) via smart contract
+  const mintNFT = useCallback(async (relicId: bigint = RELIC_TOKENS.BRONZE_SHIELD.id): Promise<boolean> => {
+    if (!address) return false;
+
+    // Find the relic and check eligibility
+    const relic = Object.values(RELIC_TOKENS).find((r) => r.id === relicId);
+    if (!relic || user.totalTimeConquered < relic.requirement) {
+      return false;
+    }
+
+    // Check if contracts are deployed
+    if (CONTRACT_ADDRESSES.relics === "0x0000000000000000000000000000000000000000") {
+      // Fallback to mock behavior if contracts not deployed
+      console.warn("Relics contract not deployed. Using mock mint.");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      setUser((prev) => ({ ...prev, hasNFT: true }));
+      return true;
+    }
+
+    try {
+      writeContract({
+        address: CONTRACT_ADDRESSES.relics,
+        abi: relicsAbi,
+        functionName: "mint",
+        args: [address, relicId, 1n, "0x"],
+      });
+
+      setUser((prev) => ({ ...prev, hasNFT: true }));
+      return true;
+    } catch (error) {
+      console.error("Failed to mint NFT:", error);
+      return false;
+    }
+  }, [address, user.totalTimeConquered, writeContract]);
 
   return (
     <GameContext.Provider
@@ -229,7 +323,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         completeSession,
         claimPlank,
         pendingPlankReward,
+        isClaimingPlank,
         mintNFT,
+        isMintingNFT,
+        plankBalance,
+        isLoadingBalance,
         hasSeenOnboarding,
         setHasSeenOnboarding,
       }}
