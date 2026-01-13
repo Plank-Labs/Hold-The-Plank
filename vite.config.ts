@@ -29,11 +29,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    rollupOptions: {
-      external: ['@solana-program/system'],
+    commonjsOptions: {
+      transformMixedEsModules: true,
     },
   },
   optimizeDeps: {
-    exclude: ['@solana-program/system'],
+    include: ['@privy-io/react-auth'],
   },
 }));
