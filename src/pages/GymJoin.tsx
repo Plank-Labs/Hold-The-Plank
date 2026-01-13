@@ -31,6 +31,17 @@ export default function GymJoin() {
 
     const requestLocation = () => {
         setLocationStatus('requesting');
+
+        // Mock GPS for DEV mode
+        if (import.meta.env.DEV && gymId === 1) {
+            setTimeout(() => {
+                setUserCoords({ lat: 37.9838, lng: 23.7275 }); // Athens coordinates
+                setLocationStatus('granted');
+                toast.success('Mock GPS Verified (Athens)');
+            }, 800);
+            return;
+        }
+
         if (!navigator.geolocation) {
             setLocationStatus('error');
             toast.error('Geolocation not supported', { description: 'Your browser doesn\'t support location services.' });
@@ -141,14 +152,21 @@ export default function GymJoin() {
                                         initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                                         className="flex items-center gap-1 text-green-400 text-xs font-medium"
                                     >
-                                        <Navigation className="h-3 w-3" /> GPS Verified
+                                        <Navigation className="h-3 w-3" /> {import.meta.env.DEV && gymId === 1 ? 'Mock GPS Active' : 'GPS Verified'}
                                     </motion.div>
                                 ) : null}
                             </AnimatePresence>
                         </div>
-                        <CardTitle className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                            {gym?.name || 'Olympic Gym'}
-                        </CardTitle>
+                        <div className="flex items-center gap-2 mb-1">
+                            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                                {gym?.name || 'Olympic Gym'}
+                            </CardTitle>
+                            {import.meta.env.DEV && gymId === 1 && (
+                                <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 text-[10px] font-bold rounded border border-yellow-500/30 uppercase tracking-tighter">
+                                    Mock Mode
+                                </span>
+                            )}
+                        </div>
                         <CardDescription className="flex items-center gap-1 mt-1">
                             <MapPin className="h-4 w-4 shrink-0" />
                             {gym?.address || 'Ancient Greece St, Athens'}

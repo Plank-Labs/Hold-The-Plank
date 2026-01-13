@@ -19,7 +19,7 @@ interface ScanResult {
 function parseGymQRUrl(url: string): ScanResult {
   try {
     const urlObj = new URL(url);
-    
+
     // Validate it's a gym join URL
     if (!urlObj.pathname.includes('/gym/join')) {
       return { gymId: null, qrSecret: null, error: 'Invalid QR code: Not a gym link' };
@@ -124,7 +124,7 @@ export function GymQRScanner({ onClose }: GymQRScannerProps) {
         <div className="scanner-error">
           <span className="error-icon">⚠️</span>
           <span>{error}</span>
-          <button 
+          <button
             className="retry-btn"
             onClick={() => {
               setError(null);
@@ -139,6 +139,23 @@ export function GymQRScanner({ onClose }: GymQRScannerProps) {
       <div className="scanner-instructions">
         <p>Point your camera at a gym's QR code to check in</p>
       </div>
+
+      {import.meta.env.DEV && (
+        <div className="dev-bypass mt-8">
+          <button
+            className="simulate-scan-btn"
+            onClick={() => {
+              setIsScanning(false);
+              const queryParams = new URLSearchParams();
+              queryParams.set('id', '1'); // Mock Gym ID from MOCK_GYM
+              queryParams.set('secret', 'MOCK_SECRET_ALPHA_77');
+              navigate(`/gym/join?${queryParams.toString()}`);
+            }}
+          >
+            🚀 Simulate Scan (Dev Only)
+          </button>
+        </div>
+      )}
 
       <style>{`
         .gym-qr-scanner {
@@ -256,6 +273,27 @@ export function GymQRScanner({ onClose }: GymQRScannerProps) {
 
         .scanner-instructions p {
           margin: 0;
+        }
+
+        .simulate-scan-btn {
+          background: rgba(197, 165, 114, 0.1);
+          border: 1px dashed #C5A572;
+          color: #C5A572;
+          padding: 0.75rem 1.5rem;
+          border-radius: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          margin-top: 1rem;
+        }
+
+        .simulate-scan-btn:hover {
+          background: rgba(197, 165, 114, 0.2);
+          transform: translateY(-2px);
+        }
+
+        .mt-8 {
+          margin-top: 2rem;
         }
       `}</style>
     </div>

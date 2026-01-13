@@ -203,3 +203,12 @@ export const shortenAddress = (address: string): string => {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
+
+// Mock Gym Data for Testing & Development
+export const MOCK_GYM: Gym = {
+  id: 1,
+  name: "Olympus Power Gym",
+  address: "777 Mt. Olympus Way, Peak City",
+  rewardAuraFixed: 50,
+  isActive: true,
+};

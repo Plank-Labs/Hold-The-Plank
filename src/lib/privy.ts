@@ -7,14 +7,13 @@ export const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID || "";
 // Privy configuration
 export const privyConfig: PrivyClientConfig = {
   // Login methods
-  loginMethods: ["wallet"],
+  loginMethods: ["email", "wallet", "google", "twitter", "apple", "discord"],
 
   // Appearance - Dark theme with gold accent matching the app's Greek theme
   appearance: {
     theme: "dark",
     accentColor: "#C5A572", // Gold accent matching the app's primary color
-    showWalletLoginFirst: true,
-    walletList: ["metamask", "rainbow"],
+    showWalletLoginFirst: false,
   },
 
   // Embedded wallets for non-crypto users

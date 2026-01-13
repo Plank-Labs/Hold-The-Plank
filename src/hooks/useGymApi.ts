@@ -1,6 +1,6 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Gym, GymLink } from '@/lib/gameData';
+import { Gym, GymLink, MOCK_GYM } from '@/lib/gameData';
 import { toast } from 'sonner';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -58,7 +58,12 @@ export function useGymApi() {
     const useGymDetails = (gymId: number | null) => {
         return useQuery<Gym>({
             queryKey: ['gym', gymId],
-            queryFn: () => fetchWithAuth(`/api/gym/${gymId}`),
+            queryFn: async () => {
+                if (import.meta.env.DEV && gymId === 1) {
+                    return MOCK_GYM;
+                }
+                return fetchWithAuth(`/api/gym/${gymId}`);
+            },
             enabled: !!gymId && authenticated,
             staleTime: 1000 * 60 * 5, // 5 minutes
         });
@@ -100,13 +105,31 @@ export function useGymApi() {
 
     // 5. Check-In Mutation
     const checkInMutation = useMutation<CheckInResponse, any, CheckInPayload>({
-        mutationFn: (payload) => fetchWithAuth('/api/gym/check-in', {
-            method: 'POST',
-            body: JSON.stringify({
-                ...payload,
-                userId: user?.id,
-            }),
-        }),
+        mutationFn: async (payload) => {
+            if (import.meta.env.DEV && (payload.qrSecret === 'MOCK_SECRET_ALPHA_77' || payload.gymId === 1)) {
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                return {
+                    success: true,
+                    message: "Mock check-in successful",
+                    auraReward: 50,
+                    gymLink: {
+                        gymId: payload.gymId,
+                        linkedAt: new Date().toISOString(),
+                        lastCheckin: new Date().toISOString()
+                    }
+                };
+            }
+
+            return fetchWithAuth('/api/gym/check-in', {
+                method: 'POST',
+                body: JSON.stringify({
+                    ...payload,
+                    userId: user?.id,
+                }),
+            });
+        },
         onSuccess: (data) => {
             // Invalidate queries to refresh data
             queryClient.invalidateQueries({ queryKey: ['user-gym-link', user?.id] });
