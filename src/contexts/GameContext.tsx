@@ -43,7 +43,6 @@ interface GameContextType {
   pendingPlankReward: number;
   isClaimingPlank: boolean;
 
-  // NFT state
   mintNFT: (relicId?: bigint) => Promise<boolean>;
   isMintingNFT: boolean;
 
