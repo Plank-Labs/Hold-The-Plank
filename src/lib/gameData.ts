@@ -31,11 +31,23 @@ export interface GuildMember {
   timeContributed: number; // seconds
 }
 
+export interface FormMetrics {
+  perfectFormTime: number;
+  goodFormTime: number;
+  needsAdjustmentTime: number;
+  poorFormTime: number;
+  notDetectedTime: number;
+  avgScore: number;
+}
+
 export interface SessionResult {
   validTimeSeconds: number;
+  totalTimeSeconds: number;
   auraPointsGained: number;
   plankReward: number;
   lifeTimeGained: string;
+  // Form metrics (only present when using AI detection)
+  formMetrics?: FormMetrics;
 }
 
 // Gym interfaces for QR code referral system (aligned with backend schema)

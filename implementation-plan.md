@@ -94,59 +94,105 @@ npm install @privy-io/react-auth @privy-io/wagmi viem@2.x wagmi@2.x
 
 ---
 
-# PHASE 2: Plank Detector Backend
+# PHASE 2: Frontend Plank Detection (Client-Side)
 
-## 2.1 Backend Structure
+> **Architecture Change**: Detection now runs entirely on-device using MediaPipe in the browser.
+> No backend required - all processing happens locally for privacy and real-time performance.
 
-```
-backend/
-├── main.py           # FastAPI app with WebSocket endpoint
-├── plank_detector.py # Copy from /plank-detection (modified)
-├── models.py         # Pydantic response models
-├── requirements.txt  # mediapipe, opencv-python, fastapi, uvicorn
-└── Dockerfile
+## 2.1 Dependencies Installed
+
+```bash
+npm install @mediapipe/pose @mediapipe/camera_utils
 ```
 
-## 2.2 WebSocket Protocol
+## 2.2 New Files Created
 
-| Direction | Message Type | Payload |
-|-----------|-------------|---------|
-| Client → Server | `frame` | `{ type: "frame", frame: "<base64>" }` at ~15 FPS |
-| Server → Client | `metrics` | `{ state, score, feedback, good_form_time, total_time, landmarks_visible }` |
-| Client → Server | `end_session` | `{ type: "end_session" }` |
-| Server → Client | `summary` | Session summary with final stats |
+### `src/lib/formEvaluation.ts` ✅
+- Port of Python `plank_detector.py` scoring logic
+- Angle calculation functions (body, hip, knee, arm)
+- Form evaluation with weighted scoring (body: 40%, hip: 30%, knee: 15%, arm: 15%)
+- PlankState enum: NOT_DETECTED, POOR_FORM, NEEDS_ADJUSTMENT, GOOD_FORM, PERFECT_FORM
+- Thresholds matching Python implementation
+- SmoothingBuffer class for temporal averaging
 
-**Endpoint**: `ws://localhost:8000/ws/plank/{session_id}`
+### `src/hooks/usePlankDetection.ts` ✅
+- MediaPipe Pose integration with browser camera
+- Real-time landmark detection at ~30 FPS
+- Angle calculation using formEvaluation library
+- Session time tracking (total, good form, perfect form, etc.)
+- Camera start/stop controls
+- Error handling for permissions and camera issues
 
-## 2.3 New Files to Create (Frontend)
+### `src/components/CameraPermissionPrompt.tsx` ✅
+- Camera permission request UI
+- States: idle, requesting, granted, denied, error
+- Instructions for enabling camera
+- Skip option for manual mode
 
-### `src/hooks/usePlankDetection.ts`
-- WebSocket connection management
-- Video stream capture (640x480, front camera)
-- Canvas for frame encoding (JPEG, 70% quality)
-- Frame streaming at 15 FPS
-- Real-time metrics state updates
+### `src/components/FormTimeBar.tsx` ✅
+- Progress bar component for form time visualization
+- FormBreakdown component for result page
+- ScoreGauge circular indicator
+- Color-coded by form quality
 
-### `src/components/CameraPreview.tsx`
-- Video element for camera feed (can be hidden)
-- Canvas for frame capture
-- Connection status indicator
+## 2.3 Files Modified
 
-## 2.4 Files to Modify
+### `src/pages/PlankSession.tsx` ✅
+- Integrated `usePlankDetection` hook
+- Camera preview in top-right corner (toggleable)
+- Real-time form score indicator
+- Dynamic feedback messages from detection
+- Manual mode fallback when camera unavailable
+- Form metrics tracking throughout session
 
-### `src/pages/PlankSession.tsx`
-- Replace simulated posture detection with real WebSocket-based detection
-- Add camera permission request
-- Use `usePlankDetection` hook for real metrics
-- Display actual score, feedback, and form state from backend
-- Handle connection errors gracefully
+### `src/pages/PlankResult.tsx` ✅
+- Form breakdown visualization (perfect/good/needs adjustment)
+- Average score gauge
+- Total time vs valid time comparison
+- Accuracy percentage display
 
-## 2.5 Verification
-- [ ] Camera permission request works
-- [ ] WebSocket connects to backend
-- [ ] Metrics update in real-time (~15 FPS)
-- [ ] Form feedback displays correctly
-- [ ] Session summary returned on end
+### `src/pages/PlankTechnique.tsx` ✅
+- Camera permission prompt before starting
+- AI detection info banner
+- Skip camera option for manual mode
+
+### `src/contexts/GameContext.tsx` ✅
+- Updated `completeSession()` to accept form metrics
+- Enhanced SessionResult type with form breakdown
+
+### `src/lib/gameData.ts` ✅
+- Added `FormMetrics` interface
+- Updated `SessionResult` to include form metrics
+
+## 2.4 Detection Logic (Ported from Python)
+
+**Scoring Algorithm:**
+```
+overall_score = (body_score × 0.40) + (hip_score × 0.30) +
+                (knee_score × 0.15) + (arm_score × 0.15)
+
+Score ≥ 90  → PERFECT_FORM (gold)
+Score 75-89 → GOOD_FORM (green)
+Score 50-74 → NEEDS_ADJUSTMENT (orange)
+Score < 50  → POOR_FORM (red)
+```
+
+**Key Thresholds:**
+| Metric | Min OK | Perfect Range | Max OK |
+|--------|--------|---------------|--------|
+| Body Alignment | 160° | 170° - 190° | 195° |
+| Hip Angle | 155° | 165° - 195° | 200° |
+| Knee Angle | 160° | - | 200° |
+| Arm Angle | 150° | - | 195° |
+
+## 2.5 Verification ✅
+- [x] Camera permission request works
+- [x] MediaPipe initializes in browser
+- [x] Real-time metrics update (~30 FPS)
+- [x] Form feedback displays correctly
+- [x] Session metrics tracked accurately
+- [x] Results page shows form breakdown
+- [x] Manual mode fallback works
 
 ---
 

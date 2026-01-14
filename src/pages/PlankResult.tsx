@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { GreekButton } from "@/components/ui/greek-button";
 import { useGame } from "@/contexts/GameContext";
 import { formatTime, SessionResult } from "@/lib/gameData";
+import { FormBreakdown, ScoreGauge } from "@/components/FormTimeBar";
 import TimeTower from "@/components/TimeTower";
 import {
   Clock,
@@ -13,18 +14,16 @@ import {
   RefreshCw,
   Home,
   Eye,
-  Loader2,
-  Check,
+  Timer,
+  Target,
 } from "lucide-react";
 
 const PlankResult: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { claimPlank, pendingPlankReward, userGuild, user } = useGame();
-  
+  const { userGuild, user } = useGame();
+
   const result = location.state as SessionResult | undefined;
-  const [isClaiming, setIsClaiming] = useState(false);
-  const [claimed, setClaimed] = useState(false);
 
   // Redirect if no result data
   if (!result) {
@@ -32,17 +31,8 @@ const PlankResult: React.FC = () => {
     return null;
   }
 
-  const handleClaim = async () => {
-    setIsClaiming(true);
-    try {
-      const success = await claimPlank();
-      if (success) {
-        setClaimed(true);
-      }
-    } finally {
-      setIsClaiming(false);
-    }
-  };
+  // Check if we have form metrics (AI detection was used)
+  const hasFormMetrics = !!result.formMetrics;
 
   const statCards = [
     {
@@ -92,24 +82,76 @@ const PlankResult: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* Main time display */}
+      {/* Main time display with both total and valid time */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.3 }}
-        className="relative mb-8"
+        className="relative mb-8 w-full max-w-md"
       >
         <div className="absolute inset-0 blur-3xl opacity-30 bg-primary rounded-full" />
-        <div className="relative greek-border rounded-xl p-8 bg-card text-center">
-          <Clock className="w-8 h-8 text-primary mx-auto mb-2" />
-          <p className="text-5xl md:text-6xl font-serif font-bold text-foreground tabular-nums">
-            {formatTime(result.validTimeSeconds)}
-          </p>
-          <p className="text-muted-foreground mt-2 text-sm uppercase tracking-wider">
-            Valid Time
-          </p>
+        <div className="relative greek-border rounded-xl p-6 bg-card">
+          {/* Valid Time - Primary */}
+          <div className="text-center mb-4">
+            <Clock className="w-8 h-8 text-primary mx-auto mb-2" />
+            <p className="text-5xl md:text-6xl font-serif font-bold text-foreground tabular-nums">
+              {formatTime(result.validTimeSeconds)}
+            </p>
+            <p className="text-muted-foreground mt-2 text-sm uppercase tracking-wider">
+              Valid Time
+            </p>
+          </div>
+
+          {/* Total Time - Secondary (only show if different from valid) */}
+          {result.totalTimeSeconds > result.validTimeSeconds && (
+            <div className="flex items-center justify-center gap-4 pt-4 border-t border-border">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Timer className="w-4 h-4" />
+                <span className="text-sm">Total Time:</span>
+                <span className="font-semibold text-foreground">
+                  {formatTime(result.totalTimeSeconds)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-primary">
+                <Target className="w-4 h-4" />
+                <span className="text-sm">Accuracy:</span>
+                <span className="font-semibold">
+                  {Math.round((result.validTimeSeconds / result.totalTimeSeconds) * 100)}%
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
+
+      {/* Form Analysis Section (only when AI detection was used) */}
+      {hasFormMetrics && result.formMetrics && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="w-full max-w-md mb-8"
+        >
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Form Analysis
+              </h3>
+              <ScoreGauge score={result.formMetrics.avgScore} size="sm" />
+            </div>
+
+            <FormBreakdown
+              perfectFormTime={result.formMetrics.perfectFormTime}
+              goodFormTime={result.formMetrics.goodFormTime}
+              needsAdjustmentTime={result.formMetrics.needsAdjustmentTime}
+              poorFormTime={result.formMetrics.poorFormTime}
+              notDetectedTime={result.formMetrics.notDetectedTime}
+              totalTime={result.totalTimeSeconds}
+              avgScore={result.formMetrics.avgScore}
+            />
+          </div>
+        </motion.div>
+      )}
 
       {/* Stats grid */}
       <motion.div
@@ -170,53 +212,27 @@ const PlankResult: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Claim button */}
-      {pendingPlankReward > 0 && !claimed && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="w-full max-w-md mb-4"
-        >
-          <GreekButton
-            variant="conquest"
-            size="xl"
-            onClick={handleClaim}
-            disabled={isClaiming}
-            className="w-full gap-2"
-          >
-            {isClaiming ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Claiming on Mantle...
-              </>
-            ) : (
-              <>
-                <Coins className="w-5 h-5" />
-                Claim {pendingPlankReward} $PLANK
-              </>
-            )}
-          </GreekButton>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            Transaction will be sent to Mantle Network
-          </p>
-        </motion.div>
-      )}
-
-      {/* Claimed success */}
-      {claimed && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md mb-4 p-4 rounded-lg bg-primary/10 border border-primary/30 text-center"
-        >
-          <Check className="w-8 h-8 text-primary mx-auto mb-2" />
-          <p className="font-semibold text-primary">$PLANK Claimed!</p>
-          <p className="text-sm text-muted-foreground">
-            Balance: {user.plankBalance} $PLANK
-          </p>
-        </motion.div>
-      )}
+      {/* Reward Status Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+        className="w-full max-w-md mb-4 p-4 rounded-lg bg-primary/10 border border-primary/30"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+            <Coins className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-foreground">
+              +{result.plankReward} $PLANK Queued
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Rewards are processed automatically by the relayer
+            </p>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Disclaimer */}
       <motion.p

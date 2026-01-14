@@ -24,6 +24,7 @@ import {
   calculatePlankReward,
   calculateLifeTimeGained,
   SessionResult,
+  FormMetrics,
 } from "@/lib/gameData";
 import {
   CONTRACT_ADDRESSES,
@@ -56,7 +57,11 @@ interface GameContextType {
   createGuild: (name: string, emblem: string, description: string) => void;
 
   // Session state
-  completeSession: (validSeconds: number) => Promise<SessionResult>;
+  completeSession: (
+    validSeconds: number,
+    totalSeconds?: number,
+    formMetrics?: FormMetrics
+  ) => Promise<SessionResult>;
 
   // Pending rewards (relayer-based)
   pendingRewards: PendingReward[];
@@ -375,7 +380,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
   // Complete a plank session - rewards are now queued by backend relayer
   const completeSession = useCallback(
-    async (validSeconds: number): Promise<SessionResult> => {
+    async (
+      validSeconds: number,
+      totalSeconds?: number,
+      formMetrics?: FormMetrics
+    ): Promise<SessionResult> => {
+      const actualTotalSeconds = totalSeconds ?? validSeconds;
       const auraPointsGained = calculateAuraPoints(validSeconds);
       const plankReward = calculatePlankReward(validSeconds);
       const lifeTimeGained = calculateLifeTimeGained(validSeconds);
@@ -393,7 +403,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
             },
             body: JSON.stringify({
               validSeconds,
+              totalSeconds: actualTotalSeconds,
               auraPoints: auraPointsGained,
+              formMetrics: formMetrics ?? null,
             }),
           });
 
@@ -444,9 +456,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
       return {
         validTimeSeconds: validSeconds,
+        totalTimeSeconds: actualTotalSeconds,
         auraPointsGained,
         plankReward,
         lifeTimeGained,
+        formMetrics,
       };
     },
     [
