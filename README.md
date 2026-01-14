@@ -51,6 +51,8 @@ We start with meaning, identity, and routine — physical discipline. Our platfo
 - [ ] Gym dashboards and CRM tools.
 - [ ] Data-driven partnerships (insurance, wellness).
 - [ ] Expansion into additional lifestyle verticals.
+- [ ] Full gamified training app: Evolve the system into a complete, gamified training platform/app that unifies onboarding, workouts, progress tracking, levels, rewards, and community.
+- [ ] Plank as the T0 of training-tech innovation: Position Plank as the foundational “T0” layer—the starting point of a broader breakthrough in training technology, enabling future features like adaptive programming, performance analytics, personalization, and scalable productization.
 
 ---
 
