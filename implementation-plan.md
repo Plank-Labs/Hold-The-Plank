@@ -357,56 +357,79 @@ userAddress, tokenId, nonce, deadline, chainId, contractAddress
 
 ## 4.4 New Database Tables
 
-### `mint_signatures` - Relic signature tracking
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | SERIAL PK | |
-| user_id | INTEGER FK | References users(id) |
-| wallet_address | VARCHAR(42) | User's wallet |
-| token_id | INTEGER | Relic ID (1-5) |
-| nonce | INTEGER | User's nonce at sign time |
-| deadline | TIMESTAMP | Signature expiration |
-| signature | VARCHAR(132) | Hex-encoded signature |
-| status | VARCHAR(20) | pending / used / expired |
-| created_at | TIMESTAMP | |
-| used_at | TIMESTAMP | When minted on-chain |
-| tx_hash | VARCHAR(66) | Transaction hash |
-
-**Constraint**: UNIQUE(user_id, token_id)
+> **Status**: ✅ DEPLOYED TO PRODUCTION (see `crypto_tables.sql`)
 
 ### `relayer_queue` - PLANK mint queue
 
 | Column | Type | Description |
 |--------|------|-------------|
-| id | SERIAL PK | |
-| user_id | INTEGER FK | References users(id) |
-| wallet_address | VARCHAR(42) | Recipient wallet |
-| amount | DECIMAL(36,18) | Amount in wei |
-| reason | VARCHAR(50) | SESSION_REWARD, GYM_BONUS, etc. |
-| session_id | INTEGER FK | Optional: references sessions(id) |
-| status | VARCHAR(20) | pending / processing / completed / failed |
-| created_at | TIMESTAMP | |
-| processed_at | TIMESTAMP | |
-| tx_hash | VARCHAR(66) | |
-| error_message | TEXT | |
-| retry_count | INTEGER | Default 0 |
+| id | INT AUTO_INCREMENT PK | |
+| user_id | INT NOT NULL | FK → users(id) ON DELETE CASCADE |
+| wallet_address | VARCHAR(42) NOT NULL | Recipient wallet |
+| amount | DECIMAL(36,18) NOT NULL | Amount in wei (18 decimals) |
+| reason | VARCHAR(50) NOT NULL | SESSION_REWARD, GYM_BONUS, STREAK_BONUS, etc. |
+| session_id | INT NULL | FK → sessions(id) ON DELETE SET NULL |
+| status | VARCHAR(20) DEFAULT 'pending' | pending / processing / completed / failed |
+| created_at | TIMESTAMP DEFAULT CURRENT_TIMESTAMP | |
+| processed_at | TIMESTAMP NULL | |
+| tx_hash | VARCHAR(66) NULL | |
+| error_message | TEXT NULL | |
+| retry_count | INT DEFAULT 0 | |
 
-**Indexes**: `status`, `user_id`
+**Indexes**: `idx_relayer_queue_status`, `idx_relayer_queue_user`
+**Foreign Keys**: `fk_relayer_queue_user`, `fk_relayer_queue_session`
+
+### `mint_signatures` - Relic signature tracking
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INT AUTO_INCREMENT PK | |
+| user_id | INT NOT NULL | FK → users(id) ON DELETE CASCADE |
+| wallet_address | VARCHAR(42) NOT NULL | User's wallet |
+| token_id | INT NOT NULL | Relic ID (1-5: Bronze Shield, Silver Helmet, Gold Sword, Diamond Crown, Kronos Slayer) |
+| nonce | INT NOT NULL | User's nonce at sign time |
+| deadline | TIMESTAMP NOT NULL | Signature expiration |
+| signature | VARCHAR(132) NOT NULL | Hex-encoded signature |
+| status | VARCHAR(20) DEFAULT 'pending' | pending / used / expired |
+| created_at | TIMESTAMP DEFAULT CURRENT_TIMESTAMP | |
+| used_at | TIMESTAMP NULL | When minted on-chain |
+| tx_hash | VARCHAR(66) NULL | Transaction hash |
+
+**Constraint**: UNIQUE KEY `unique_user_token` (user_id, token_id)
+**Indexes**: `idx_mint_signatures_status`, `idx_mint_signatures_wallet`
+**Foreign Keys**: `fk_mint_signatures_user`
 
 ## 4.5 Schema Modifications
 
-### `transactions` table - New enum values
+> **Status**: ✅ DEPLOYED TO PRODUCTION (see `crypto_tables.sql`)
+
+### `transactions` table - Updated ENUM values (MySQL)
 ```sql
-ALTER TYPE enum_transaction_type ADD VALUE 'session_mint';
-ALTER TYPE enum_transaction_type ADD VALUE 'gym_bonus_mint';
-ALTER TYPE enum_transaction_type ADD VALUE 'streak_bonus_mint';
-ALTER TYPE enum_transaction_type ADD VALUE 'relic_mint';
+-- Existing values: 'game_reward', 'guild_bonus', 'shop_purchase', 'withdrawal', 'gym_checkin'
+-- Added new crypto transaction types:
+ALTER TABLE transactions
+MODIFY COLUMN type ENUM(
+    'game_reward',        -- EXISTING: off-chain game session rewards
+    'guild_bonus',        -- EXISTING: guild-related bonuses
+    'shop_purchase',      -- EXISTING: in-app shop purchases
+    'withdrawal',         -- EXISTING: token withdrawals
+    'gym_checkin',        -- EXISTING: gym check-in rewards
+    'session_mint',       -- NEW: PLANK minted for session completion (via relayer)
+    'gym_bonus_mint',     -- NEW: PLANK minted for gym signup bonus (via relayer)
+    'streak_bonus_mint',  -- NEW: PLANK minted for streak milestone (via relayer)
+    'relic_mint'          -- NEW: Relic NFT minted on-chain (user-initiated)
+);
+```
+
+### `gym_checkins` table - New column
+```sql
+-- Tracks if user has claimed their one-time 10 PLANK gym signup bonus
+ALTER TABLE gym_checkins ADD COLUMN gym_bonus_claimed BOOLEAN DEFAULT FALSE;
 ```
 
 ### `user_inventory` table - Index for on-chain queries
 ```sql
-CREATE INDEX idx_user_inventory_minted ON user_inventory(minted_on_chain);
+ALTER TABLE user_inventory ADD INDEX idx_user_inventory_minted (minted_on_chain);
 ```
 
 ## 4.6 Backend Services
@@ -514,51 +537,60 @@ CREATE INDEX idx_user_inventory_minted ON user_inventory(minted_on_chain);
 - [ ] Verify contracts on MantleScan
 
 ### 4.10.2 Database Migrations
-- [ ] Create migration for `mint_signatures` table:
+
+> **Status**: ✅ COMPLETED - All migrations deployed to production via `crypto_tables.sql`
+
+- [x] Create migration for `relayer_queue` table:
   ```sql
-  CREATE TABLE mint_signatures (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) NOT NULL,
-    wallet_address VARCHAR(42) NOT NULL,
-    token_id INTEGER NOT NULL,
-    nonce INTEGER NOT NULL,
-    deadline TIMESTAMP NOT NULL,
-    signature VARCHAR(132) NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW(),
-    used_at TIMESTAMP,
-    tx_hash VARCHAR(66),
-    UNIQUE(user_id, token_id)
+  CREATE TABLE IF NOT EXISTS relayer_queue (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      wallet_address VARCHAR(42) NOT NULL,
+      amount DECIMAL(36, 18) NOT NULL COMMENT 'Amount in wei (18 decimals)',
+      reason VARCHAR(50) NOT NULL COMMENT 'SESSION_REWARD, GYM_BONUS, STREAK_BONUS, etc.',
+      session_id INT NULL,
+      status VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, processing, completed, failed',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      processed_at TIMESTAMP NULL,
+      tx_hash VARCHAR(66) NULL,
+      error_message TEXT NULL,
+      retry_count INT DEFAULT 0,
+      INDEX idx_relayer_queue_status (status),
+      INDEX idx_relayer_queue_user (user_id),
+      CONSTRAINT fk_relayer_queue_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_relayer_queue_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  ```
+- [x] Create migration for `mint_signatures` table:
+  ```sql
+  CREATE TABLE IF NOT EXISTS mint_signatures (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      wallet_address VARCHAR(42) NOT NULL,
+      token_id INT NOT NULL COMMENT 'Relic ID (1-5)',
+      nonce INT NOT NULL,
+      deadline TIMESTAMP NOT NULL,
+      signature VARCHAR(132) NOT NULL,
+      status VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, used, expired',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      used_at TIMESTAMP NULL,
+      tx_hash VARCHAR(66) NULL,
+      UNIQUE KEY unique_user_token (user_id, token_id),
+      INDEX idx_mint_signatures_status (status),
+      INDEX idx_mint_signatures_wallet (wallet_address),
+      CONSTRAINT fk_mint_signatures_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  ```
+- [x] Add new transaction type enums (MySQL ENUM modification):
+  ```sql
+  ALTER TABLE transactions
+  MODIFY COLUMN type ENUM(
+      'game_reward', 'guild_bonus', 'shop_purchase', 'withdrawal', 'gym_checkin',
+      'session_mint', 'gym_bonus_mint', 'streak_bonus_mint', 'relic_mint'
   );
   ```
-- [ ] Create migration for `relayer_queue` table:
-  ```sql
-  CREATE TABLE relayer_queue (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) NOT NULL,
-    wallet_address VARCHAR(42) NOT NULL,
-    amount DECIMAL(36, 18) NOT NULL,
-    reason VARCHAR(50) NOT NULL,
-    session_id INTEGER REFERENCES sessions(id),
-    status VARCHAR(20) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW(),
-    processed_at TIMESTAMP,
-    tx_hash VARCHAR(66),
-    error_message TEXT,
-    retry_count INTEGER DEFAULT 0
-  );
-  CREATE INDEX idx_relayer_queue_status ON relayer_queue(status);
-  CREATE INDEX idx_relayer_queue_user ON relayer_queue(user_id);
-  ```
-- [ ] Add new transaction type enums:
-  ```sql
-  ALTER TYPE enum_transaction_type ADD VALUE 'session_mint';
-  ALTER TYPE enum_transaction_type ADD VALUE 'gym_bonus_mint';
-  ALTER TYPE enum_transaction_type ADD VALUE 'streak_bonus_mint';
-  ALTER TYPE enum_transaction_type ADD VALUE 'relic_mint';
-  ```
-- [ ] Add `gym_bonus_claimed` column to `gym_checkins` table (if not exists)
-- [ ] Add index on `user_inventory(minted_on_chain)`
+- [x] Add `gym_bonus_claimed` column to `gym_checkins` table
+- [x] Add index `idx_user_inventory_minted` on `user_inventory(minted_on_chain)`
 
 ### 4.10.3 Backend: Session Reward System (PLANK per session)
 - [ ] Update `POST /api/sessions/complete` endpoint:
