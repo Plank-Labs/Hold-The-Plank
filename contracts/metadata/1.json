@@ -1,0 +1,14 @@
+{
+  "name": "Bronze Shield",
+  "description": "Awarded to warriors who have conquered 1 minute of total plank time. The first step on the path to defeating Kronos.",
+  "image": "ipfs://bafybeicrnhg5mvkyeaz3i373vgo36ymvpn5noahkaf6celjt6njypwi3fy",
+  "external_url": "https://conquerplank.app/relics/1",
+  "attributes": [
+    { "trait_type": "Tier", "value": "Bronze" },
+    { "trait_type": "Level", "value": 1 },
+    { "trait_type": "Requirement", "value": "1 minute" },
+    { "trait_type": "Requirement Seconds", "value": 60 },
+    { "trait_type": "Rarity", "value": "Common" },
+    { "trait_type": "Greek Theme", "value": "Shield of the Initiate" }
+  ]
+}
