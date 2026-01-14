@@ -29,15 +29,9 @@ export default defineConfig(({ mode }) => ({
   build: {
     commonjsOptions: {
       transformMixedEsModules: true,
-      include: [/node_modules/],
-      namedExports: {
-        '@mediapipe/pose': ['Pose'],
-        '@mediapipe/camera_utils': ['Camera'],
-      },
     },
   },
   optimizeDeps: {
     include: ['@privy-io/react-auth'],
-    exclude: ['@mediapipe/pose', '@mediapipe/camera_utils'],
   },
 }));

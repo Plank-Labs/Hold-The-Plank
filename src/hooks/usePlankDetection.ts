@@ -6,8 +6,22 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Pose, Results, NormalizedLandmarkList } from "@mediapipe/pose";
-import { Camera } from "@mediapipe/camera_utils";
+import type { Pose as PoseType, Results, NormalizedLandmarkList } from "@mediapipe/pose";
+import type { Camera as CameraType } from "@mediapipe/camera_utils";
+
+// Load MediaPipe from CDN to avoid bundler issues
+const loadMediaPipe = async () => {
+  const pose = await import(
+    /* @vite-ignore */ "https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"
+  );
+  const camera = await import(
+    /* @vite-ignore */ "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
+  );
+  return {
+    Pose: pose.Pose as typeof PoseType,
+    Camera: camera.Camera as typeof CameraType,
+  };
+};
 import {
   PlankState,
   PlankMetrics,
@@ -446,6 +460,8 @@ export function usePlankDetection(
    */
   const initializePose = useCallback(async () => {
     try {
+      const { Pose } = await loadMediaPipe();
+
       const pose = new Pose({
         locateFile: (file) => {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
@@ -508,6 +524,7 @@ export function usePlankDetection(
       setIsProcessing(true);
 
       // Create camera instance
+      const { Camera } = await loadMediaPipe();
       const camera = new Camera(videoRef.current, {
         onFrame: async () => {
           if (poseRef.current && videoRef.current) {
