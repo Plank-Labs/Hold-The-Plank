@@ -256,7 +256,7 @@ export default function GymDashboard() {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
                             >
-                                <Card className="border-white/5 bg-[#16213e]/20 overflow-hidden flex flex-col shadow-2xl">
+                                <Card className="border-white/5 bg-[#16213e]/20 overflow-hidden flex flex-col shadow-2xl min-w-0">
                                     <CardHeader className="bg-white/5 p-6 border-b border-white/5">
                                         <div className="flex items-center justify-between">
                                             <div className="bg-[#C5A572]/20 px-3 py-1 rounded-full text-[10px] font-black text-[#C5A572] uppercase tracking-[0.2em]">
@@ -286,8 +286,8 @@ export default function GymDashboard() {
                                             </div>
                                         </div>
                                         <h2 className="text-3xl font-black text-white text-center tracking-tight leading-tight">{gym.name}</h2>
-                                        <p className="text-gray-400 text-sm flex items-center gap-1.5 mt-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
-                                            <MapPin className="h-3.5 w-3.5 text-[#C5A572]" /> {gym.address}
+                                        <p className="text-gray-400 text-sm flex items-center gap-1.5 mt-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/5 max-w-full">
+                                            <MapPin className="h-3.5 w-3.5 text-[#C5A572] shrink-0" /> <span className="truncate">{gym.address}</span>
                                         </p>
                                     </CardContent>
                                     <CardFooter className="bg-[#1a1a2e]/50 flex gap-2 p-6 border-t border-white/5">
@@ -300,7 +300,7 @@ export default function GymDashboard() {
                                     </CardFooter>
                                 </Card>
 
-                                <div className="lg:col-span-2 space-y-8 flex flex-col">
+                                <div className="lg:col-span-2 space-y-8 flex flex-col min-w-0">
                                     <div className="grid sm:grid-cols-2 gap-8">
                                         <Card className="border-[#C5A572]/20 bg-gradient-to-br from-[#1c2a4e] to-[#0a0a1a] shadow-xl relative overflow-hidden group">
                                             <div className="absolute -right-10 -bottom-10 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -338,14 +338,14 @@ export default function GymDashboard() {
                                         </Card>
                                     </div>
 
-                                    <Card className="border-white/5 bg-[#16213e]/20 grow flex flex-col shadow-2xl rounded-[1.5rem] overflow-hidden">
-                                        <CardHeader className="flex flex-row items-center justify-between p-8 border-b border-white/5 bg-white/[0.02]">
-                                            <div>
-                                                <CardTitle className="text-xl font-bold text-white uppercase tracking-tight">Member Directory</CardTitle>
-                                                <CardDescription className="text-xs font-medium text-gray-500 mt-0.5 uppercase tracking-widest">Activity Audit & Aura Attribution</CardDescription>
+                                    <Card className="border-white/5 bg-[#16213e]/20 grow flex flex-col shadow-2xl rounded-[1.5rem] overflow-hidden min-w-0">
+                                        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-8 border-b border-white/5 bg-white/[0.02]">
+                                            <div className="min-w-0">
+                                                <CardTitle className="text-lg md:text-xl font-bold text-white uppercase tracking-tight">Member Directory</CardTitle>
+                                                <CardDescription className="text-xs font-medium text-gray-500 mt-0.5 uppercase tracking-widest truncate">Activity Audit & Aura Attribution</CardDescription>
                                             </div>
-                                            <Button variant="outline" className="h-10 px-6 border-white/10 bg-white/5 text-gray-400 font-bold text-xs hover:bg-white/10 rounded-xl">
-                                                EXPORT DATA
+                                            <Button variant="outline" className="h-10 px-4 md:px-6 border-white/10 bg-white/5 text-gray-400 font-bold text-xs hover:bg-white/10 rounded-xl shrink-0">
+                                                EXPORT
                                             </Button>
                                         </CardHeader>
                                         <CardContent className="p-0 grow bg-black/10">
