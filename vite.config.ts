@@ -37,8 +37,13 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
+    minify: 'esbuild',
+    target: 'esnext',
   },
   optimizeDeps: {
     include: ['@privy-io/react-auth', '@mediapipe/pose', '@mediapipe/camera_utils'],
+  },
+  esbuild: {
+    keepNames: true,
   },
 }));
