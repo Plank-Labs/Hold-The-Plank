@@ -19,6 +19,7 @@ import GymJoin from "./pages/GymJoin";
 import GymDashboard from "./pages/GymDashboard";
 import GymScan from "./pages/GymScan";
 import RelicsDemo from "./pages/RelicsDemo";
+import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/gym/dashboard" element={<GymDashboard />} />
                 <Route path="/gym/scan" element={<GymScan />} />
                 <Route path="/relics-demo" element={<RelicsDemo />} />
+                <Route path="/documentation" element={<Documentation />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

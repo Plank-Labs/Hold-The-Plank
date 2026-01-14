@@ -43,7 +43,7 @@ const Index: React.FC = () => {
       <div className="max-w-2xl mx-auto">
         {!isConnected ? (
           // Disconnected state - landing page
-          <DisconnectedView />
+          <DisconnectedView onNavigate={navigate} />
         ) : (
           // Connected state - dashboard
           <ConnectedDashboard
@@ -58,7 +58,11 @@ const Index: React.FC = () => {
 };
 
 // Landing page for disconnected users
-const DisconnectedView: React.FC = () => {
+interface DisconnectedViewProps {
+  onNavigate: (path: string) => void;
+}
+
+const DisconnectedView: React.FC<DisconnectedViewProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-[calc(100vh-10rem)] flex flex-col items-center justify-center text-center px-4">
       {/* Hero icon */}
@@ -131,9 +135,15 @@ const DisconnectedView: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-sm text-muted-foreground"
+        className="text-sm text-muted-foreground flex flex-col gap-4 items-center"
       >
-        Connect your wallet to begin
+        <span>Connect your wallet to begin</span>
+        <button
+          onClick={() => onNavigate("/documentation")}
+          className="text-xs text-primary/60 hover:text-primary transition-colors flex items-center gap-1 uppercase tracking-widest font-serif"
+        >
+          Read the White Paper <ChevronRight className="w-3 h-3" />
+        </button>
       </motion.p>
     </div>
   );
@@ -312,11 +322,17 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-center py-4"
+        className="text-center py-4 flex flex-col gap-2 items-center"
       >
         <p className="text-xs text-muted-foreground italic">
           "Don't just pass time. Conquer it."
         </p>
+        <button
+          onClick={() => onNavigate("/documentation")}
+          className="text-[10px] text-primary/40 hover:text-primary transition-colors flex items-center gap-1 uppercase tracking-[0.2em] font-serif mt-2"
+        >
+          View White Paper <ChevronRight className="w-3 h-3" />
+        </button>
       </motion.div>
     </div>
   );
