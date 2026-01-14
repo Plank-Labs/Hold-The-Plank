@@ -56,7 +56,7 @@ interface GameContextType {
   createGuild: (name: string, emblem: string, description: string) => void;
 
   // Session state
-  completeSession: (validSeconds: number) => SessionResult;
+  completeSession: (validSeconds: number) => Promise<SessionResult>;
 
   // Pending rewards (relayer-based)
   pendingRewards: PendingReward[];

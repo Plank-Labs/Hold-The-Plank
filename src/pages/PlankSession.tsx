@@ -83,12 +83,12 @@ const PlankSession: React.FC = () => {
     return () => clearInterval(quoteInterval);
   }, [phase]);
 
-  const handleStop = useCallback(() => {
+  const handleStop = useCallback(async () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (postureIntervalRef.current) clearTimeout(postureIntervalRef.current);
-    
-    const result = completeSession(validTime);
-    
+
+    const result = await completeSession(validTime);
+
     // Navigate to result with state
     navigate("/plank/result", { state: result });
   }, [completeSession, validTime, navigate]);
