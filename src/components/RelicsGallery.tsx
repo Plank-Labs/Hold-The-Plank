@@ -1,33 +1,33 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useReliks, Relik } from '../hooks/useReliks';
+import { useRelics, Relic } from '../hooks/useRelics';
 import { Lock, Share2, Plus } from 'lucide-react';
 
-interface RelikCardProps {
-    relik: Relik;
+interface RelicCardProps {
+    relic: Relic;
     isUnlocked: boolean;
     onShare?: () => void;
 }
 
-const RelikCard: React.FC<RelikCardProps> = ({ relik, isUnlocked, onShare }) => {
+const RelicCard: React.FC<RelicCardProps> = ({ relic, isUnlocked, onShare }) => {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className={`relative group bg-zinc-900/50 rounded-2xl border ${isUnlocked
-                    ? 'border-yellow-500/20 hover:border-yellow-500/50 shadow-lg hover:shadow-yellow-500/10'
-                    : 'border-zinc-800'
+                ? 'border-yellow-500/20 hover:border-yellow-500/50 shadow-lg hover:shadow-yellow-500/10'
+                : 'border-zinc-800'
                 } p-4 transition-all duration-500`}
         >
             {/* Image Container */}
             <div className="relative aspect-square rounded-xl overflow-hidden mb-4 bg-zinc-950">
                 <img
-                    src={relik.image}
-                    alt={relik.name}
+                    src={relic.image}
+                    alt={relic.name}
                     className={`w-full h-full object-cover transition-all duration-700 ${isUnlocked
-                            ? 'grayscale-0 group-hover:scale-110'
-                            : 'grayscale opacity-30 brightness-50 contrast-125'
+                        ? 'grayscale-0 group-hover:scale-110'
+                        : 'grayscale opacity-30 brightness-50 contrast-125'
                         }`}
                 />
 
@@ -46,7 +46,7 @@ const RelikCard: React.FC<RelikCardProps> = ({ relik, isUnlocked, onShare }) => 
                             className="w-full py-2 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-colors border border-white/10"
                         >
                             <Share2 size={14} />
-                            SHARE RELIK
+                            SHARE RELIC
                         </button>
                     </div>
                 )}
@@ -56,7 +56,7 @@ const RelikCard: React.FC<RelikCardProps> = ({ relik, isUnlocked, onShare }) => 
             <div className="space-y-1">
                 <div className="flex items-center justify-between">
                     <h3 className={`font-serif text-lg ${isUnlocked ? 'text-white' : 'text-zinc-600'}`}>
-                        {relik.name}
+                        {relic.name}
                     </h3>
                     {isUnlocked && (
                         <div className="w-2 h-2 bg-yellow-500 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.8)]" />
@@ -64,7 +64,7 @@ const RelikCard: React.FC<RelikCardProps> = ({ relik, isUnlocked, onShare }) => 
                 </div>
                 <p className={`text-xs uppercase tracking-widest font-bold ${isUnlocked ? 'text-yellow-500/70' : 'text-zinc-700'
                     }`}>
-                    {isUnlocked ? 'Achievement Reached' : `Requirement: ${Math.floor(relik.requirement / 60)}m`}
+                    {isUnlocked ? 'Achievement Reached' : `Requirement: ${Math.floor(relic.requirement / 60)}m`}
                 </p>
             </div>
 
@@ -76,14 +76,14 @@ const RelikCard: React.FC<RelikCardProps> = ({ relik, isUnlocked, onShare }) => 
     );
 };
 
-export const ReliksGallery: React.FC<{ totalSeconds: number }> = ({ totalSeconds }) => {
-    const { allReliks, isUnlocked } = useReliks(totalSeconds);
+export const RelicsGallery: React.FC<{ totalSeconds: number }> = ({ totalSeconds }) => {
+    const { allRelics, isUnlocked } = useRelics(totalSeconds);
 
     return (
         <div className="w-full max-w-6xl mx-auto px-4 py-12">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                 <div className="space-y-2">
-                    <h2 className="text-4xl font-serif text-white tracking-tight">The Reliks of Time</h2>
+                    <h2 className="text-4xl font-serif text-white tracking-tight">The Relics of Time</h2>
                     <p className="text-zinc-400 max-w-xl">
                         Ancient treasures awarded to those who master the art of the plank.
                         Keep pushing your boundaries to unlock divine artifacts.
@@ -96,12 +96,12 @@ export const ReliksGallery: React.FC<{ totalSeconds: number }> = ({ totalSeconds
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                {allReliks.map((relik) => (
-                    <RelikCard
-                        key={relik.id}
-                        relik={relik}
-                        isUnlocked={isUnlocked(relik.id)}
-                        onShare={() => console.log('Sharing', relik.name)}
+                {allRelics.map((relic) => (
+                    <RelicCard
+                        key={relic.id}
+                        relic={relic}
+                        isUnlocked={isUnlocked(relic.id)}
+                        onShare={() => console.log('Sharing', relic.name)}
                     />
                 ))}
 
@@ -115,7 +115,7 @@ export const ReliksGallery: React.FC<{ totalSeconds: number }> = ({ totalSeconds
                         <Plus className="text-zinc-700" size={24} />
                     </div>
                     <div className="text-zinc-700 font-serif text-lg">Future Legends</div>
-                    <p className="text-[10px] uppercase tracking-widest text-zinc-800 mt-2">More Reliks Await</p>
+                    <p className="text-[10px] uppercase tracking-widest text-zinc-800 mt-2">More Relics Await</p>
                 </motion.div>
             </div>
         </div>

@@ -37,47 +37,21 @@ const PlankTechnique: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* Plank illustration frame */}
+      {/* Hero Image / Plank Technique Illustration */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1 }}
-        className="relative w-full max-w-sm aspect-[4/3] mb-8 greek-border rounded-lg overflow-hidden bg-card"
+        className="relative w-full max-w-sm aspect-video mb-8 rounded-2xl overflow-hidden bg-zinc-950 border border-yellow-500/20 shadow-[0_0_30px_rgba(0,0,0,0.5)]"
       >
-        {/* Greek pattern top */}
-        <div className="absolute top-0 left-0 right-0 h-3 meander-pattern" />
-        
-        {/* Plank silhouette */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative">
-            {/* Simple plank pose representation */}
-            <svg
-              viewBox="0 0 200 80"
-              className="w-64 h-20 text-primary"
-              fill="currentColor"
-            >
-              {/* Body line */}
-              <ellipse cx="100" cy="40" rx="70" ry="8" opacity="0.2" />
-              {/* Head */}
-              <circle cx="30" cy="35" r="12" />
-              {/* Body */}
-              <rect x="40" y="32" width="80" height="16" rx="8" />
-              {/* Arms */}
-              <rect x="38" y="48" width="8" height="25" rx="4" />
-              <rect x="50" y="48" width="8" height="25" rx="4" />
-              {/* Legs */}
-              <rect x="110" y="38" width="50" height="12" rx="6" />
-              {/* Feet */}
-              <circle cx="165" cy="55" r="6" />
-            </svg>
-            
-            {/* Alignment line */}
-            <div className="absolute top-1/2 left-0 right-0 h-px bg-primary/50 -translate-y-1/2" />
-          </div>
-        </div>
+        <img
+          src="/elbow_plank_hero.jpg"
+          alt="Ancient Greek athlete in perfect elbow plank form"
+          className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+        />
 
-        {/* Greek pattern bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-3 meander-pattern" />
+        {/* Subtle overlay for text readability if needed later, but keeping it cinematic for now */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
       </motion.div>
 
       {/* Rules */}

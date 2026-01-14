@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { ReliksGallery } from '@/components/ReliksGallery';
+import { RelicsGallery } from '@/components/RelicsGallery';
 import { RewardReveal } from '@/components/RewardReveal';
-import { useReliks } from '@/hooks/useReliks';
+import { useRelics } from '@/hooks/useRelics';
 import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 
-const ReliksDemo = () => {
+const RelicsDemo = () => {
     const [totalSeconds, setTotalSeconds] = useState(0);
     const [showReward, setShowReward] = useState(false);
-    const { allReliks } = useReliks(totalSeconds);
+    const { allRelics } = useRelics(totalSeconds);
 
     // For demo: trigger reward for the Bronze Shield (1 minute)
-    const demoRelik = allReliks[0];
+    const demoRelic = allRelics[0];
 
     return (
         <div className="min-h-screen bg-black text-white font-sans selection:bg-yellow-500/30">
@@ -22,7 +22,7 @@ const ReliksDemo = () => {
                         <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl rotate-12 flex items-center justify-center shadow-[0_0_20px_rgba(234,179,8,0.3)]">
                             <Trophy className="text-black" size={20} />
                         </div>
-                        <span className="text-xl font-serif font-bold tracking-tight">RELIKS OF TIME</span>
+                        <span className="text-xl font-serif font-bold tracking-tight">RELICS OF TIME</span>
                     </div>
 
                     <div className="flex items-center gap-6">
@@ -51,8 +51,8 @@ const ReliksDemo = () => {
                                     key={s}
                                     onClick={() => setTotalSeconds(s)}
                                     className={`px-4 py-8 rounded-2xl border-2 transition-all group ${totalSeconds === s
-                                            ? 'border-yellow-500/50 bg-yellow-500/5'
-                                            : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/50'
+                                        ? 'border-yellow-500/50 bg-yellow-500/5'
+                                        : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/50'
                                         }`}
                                 >
                                     <div className={`text-2xl font-serif mb-1 ${totalSeconds === s ? 'text-yellow-500' : 'text-zinc-400'}`}>
@@ -68,13 +68,13 @@ const ReliksDemo = () => {
                 </div>
 
                 {/* The Gallery Component */}
-                <ReliksGallery totalSeconds={totalSeconds} />
+                <RelicsGallery totalSeconds={totalSeconds} />
             </main>
 
             {/* Reward Reveal Modal */}
             {showReward && (
                 <RewardReveal
-                    relik={demoRelik}
+                    relic={demoRelic}
                     auraPoints={1250}
                     onClose={() => setShowReward(false)}
                     onShare={() => alert('Sharing your achievement!')}
@@ -84,7 +84,7 @@ const ReliksDemo = () => {
             {/* Footer */}
             <footer className="border-t border-zinc-900 py-20 bg-zinc-950">
                 <div className="max-w-6xl mx-auto px-4 text-center">
-                    <div className="text-zinc-500 text-sm mb-4">Reliks of Time System &copy; 2026</div>
+                    <div className="text-zinc-500 text-sm mb-4">Relics of Time System &copy; 2026</div>
                     <div className="flex justify-center gap-8 mt-4">
                         {['Terms', 'Privacy', 'Support'].map(f => (
                             <a key={f} href="#" className="text-zinc-700 hover:text-zinc-400 text-xs uppercase font-bold tracking-widest">{f}</a>
@@ -96,4 +96,4 @@ const ReliksDemo = () => {
     );
 };
 
-export default ReliksDemo;
+export default RelicsDemo;

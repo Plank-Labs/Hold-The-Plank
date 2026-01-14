@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Relik } from '../hooks/useReliks';
+import { Relic } from '../hooks/useRelics';
 import { Sparkles, Share2, X } from 'lucide-react';
 
 interface RewardRevealProps {
-    relik: Relik;
+    relic: Relic;
     auraPoints: number;
     onClose: () => void;
     onShare?: () => void;
@@ -30,7 +30,7 @@ const Particle = ({ delay }: { delay: number }) => (
 );
 
 export const RewardReveal: React.FC<RewardRevealProps> = ({
-    relik,
+    relic,
     auraPoints,
     onClose,
     onShare,
@@ -91,7 +91,7 @@ export const RewardReveal: React.FC<RewardRevealProps> = ({
                             className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-yellow-500/10 text-yellow-500 text-sm font-bold uppercase tracking-widest mb-2"
                         >
                             <Sparkles size={16} />
-                            New Relik Unlocked
+                            New Relic Unlocked
                             <Sparkles size={16} />
                         </motion.div>
                         <motion.h2
@@ -100,11 +100,11 @@ export const RewardReveal: React.FC<RewardRevealProps> = ({
                             transition={{ delay: 0.4 }}
                             className="text-4xl font-serif text-white tracking-tight"
                         >
-                            {relik.name}
+                            {relic.name}
                         </motion.h2>
                     </div>
 
-                    {/* Relik Image Reveal */}
+                    {/* Relic Image Reveal */}
                     <div className="relative aspect-square w-full max-w-[280px] mx-auto mb-8">
                         <motion.div
                             initial={{ scale: 0, rotate: -180, filter: 'brightness(0) blur(10px)' }}
@@ -123,8 +123,8 @@ export const RewardReveal: React.FC<RewardRevealProps> = ({
                             className="relative z-10 w-full h-full rounded-2xl overflow-hidden border-2 border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.4)] group"
                         >
                             <img
-                                src={relik.image}
-                                alt={relik.name}
+                                src={relic.image}
+                                alt={relic.name}
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
