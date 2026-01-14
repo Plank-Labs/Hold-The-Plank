@@ -168,7 +168,7 @@ export default function GymDashboard() {
                             </div>
                             <span className="text-[#C5A572] font-bold text-sm uppercase tracking-widest">Partner Portal</span>
                         </div>
-                        <h1 className="text-5xl font-black bg-gradient-to-r from-white via-gray-200 to-gray-500 bg-clip-text text-transparent tracking-tighter">
+                        <h1 className="text-3xl md:text-5xl font-black bg-gradient-to-r from-white via-gray-200 to-gray-500 bg-clip-text text-transparent tracking-tighter">
                             Gym Dashboard
                         </h1>
                         <p className="text-gray-400 mt-2 text-lg">Growth analytics and member engagement suite.</p>
@@ -178,7 +178,7 @@ export default function GymDashboard() {
                         onClick={() => setIsRegistering(!isRegistering)}
                         className={`${isRegistering ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 px-8' : 'bg-[#C5A572] hover:bg-[#A08050] text-[#1a1a2e] shadow-[0_0_20px_rgba(197,165,114,0.3)] px-10'} font-bold h-12 transition-all flex items-center gap-2 rounded-xl`}
                     >
-                        {isRegistering ? 'Cancel' : <><Plus className="h-5 w-5" /> Register New Location</>}
+                        {isRegistering ? 'Cancel' : <><Plus className="h-5 w-5" /> <span className="hidden sm:inline">Register New Location</span></>}
                     </Button>
                 </header>
 
@@ -254,7 +254,7 @@ export default function GymDashboard() {
                                 key={gym.id}
                                 initial={{ opacity: 0, y: 30 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="grid lg:grid-cols-3 gap-8"
+                                className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
                             >
                                 <Card className="border-white/5 bg-[#16213e]/20 overflow-hidden flex flex-col shadow-2xl">
                                     <CardHeader className="bg-white/5 p-6 border-b border-white/5">
@@ -353,15 +353,15 @@ export default function GymDashboard() {
                                                 <table className="w-full text-left border-collapse">
                                                     <thead className="sticky top-0 bg-[#0a0a1a] z-10 shadow-lg shadow-black/40">
                                                         <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600">
-                                                            <th className="px-8 py-5">Officer (User)</th>
-                                                            <th className="px-8 py-5">Aura Attribution</th>
-                                                            <th className="px-8 py-5 text-right">Latest Deployment</th>
+                                                            <th className="px-4 md:px-8 py-5">Officer (User)</th>
+                                                            <th className="px-4 md:px-8 py-5">Aura Attribution</th>
+                                                            <th className="px-4 md:px-8 py-5 text-right">Latest Deployment</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-white/[0.03]">
                                                         {(gym.members || MOCK_MEMBERS).map((member: any) => (
                                                             <tr key={member.userId} className="hover:bg-white/[0.04] transition-all group">
-                                                                <td className="px-8 py-6">
+                                                                <td className="px-4 md:px-8 py-6">
                                                                     <div className="flex items-center gap-4">
                                                                         <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#16213e] to-[#C5A572]/20 border border-white/10 flex items-center justify-center text-xs font-black text-[#C5A572]">
                                                                             {member.username.substring(0, 2).toUpperCase()}
@@ -372,7 +372,7 @@ export default function GymDashboard() {
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td className="px-8 py-6">
+                                                                <td className="px-4 md:px-8 py-6">
                                                                     <div className="flex items-center gap-3">
                                                                         <span className="font-black text-lg text-white tabular-nums tracking-tighter">+{member.auraEarned}</span>
                                                                         <div className="h-1.5 w-16 bg-white/5 rounded-full overflow-hidden">
@@ -383,7 +383,7 @@ export default function GymDashboard() {
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td className="px-8 py-6 text-right">
+                                                                <td className="px-4 md:px-8 py-6 text-right">
                                                                     <div className="flex flex-col items-end">
                                                                         <span className="text-sm font-bold text-gray-400 group-hover:text-gray-200">
                                                                             {new Date(member.lastCheckin).toLocaleDateString([], { month: 'short', day: 'numeric' })}
