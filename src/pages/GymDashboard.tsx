@@ -272,7 +272,7 @@ export default function GymDashboard() {
                                             </div>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="p-6 sm:p-10 flex flex-col items-center justify-center grow overflow-hidden">
+                                    <CardContent className="p-6 sm:p-10 flex flex-col items-center justify-center grow min-w-0">
                                         <div className="bg-white p-6 rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] mb-8 transform hover:scale-105 transition-all duration-700 relative group">
                                             <QRCodeSVG
                                                 ref={(el) => (qrRefs.current[gym.id] = el as any)}
@@ -286,7 +286,7 @@ export default function GymDashboard() {
                                             </div>
                                         </div>
                                         <h2 className="text-3xl font-black text-white text-center tracking-tight leading-tight">{gym.name}</h2>
-                                        <p className="text-gray-400 text-sm flex items-center gap-1.5 mt-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/5 max-w-full overflow-hidden">
+                                        <p className="text-gray-400 text-sm flex items-center gap-1.5 mt-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/5 w-full min-w-0">
                                             <MapPin className="h-3.5 w-3.5 text-[#C5A572] shrink-0" /> <span className="truncate">{gym.address}</span>
                                         </p>
                                     </CardContent>
