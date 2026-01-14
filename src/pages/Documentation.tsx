@@ -280,7 +280,7 @@ const Documentation = () => {
             icon: <Zap className="w-4 h-4" />,
             content: (
                 <div className="space-y-6">
-                    <p>Building a lifestyle-native economy that rewards behavior and routine. Dual-token architecture isolates speculation (economic engagement) from utility (reputation/governance).</p>
+                    <p>Building a lifestyle-native economy on <strong>Mantle Network</strong> that rewards behavior and routine. By leveraging Mantle’s modular rollup architecture, we ensure near-instant verification and low-cost transactions for every workout and payment.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded bg-gold/5 border border-gold/20">
                             <h5 className="text-gold font-serif text-sm mb-2">AURA</h5>
