@@ -9,17 +9,37 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { Pose as PoseType, Results, NormalizedLandmarkList } from "@mediapipe/pose";
 import type { Camera as CameraType } from "@mediapipe/camera_utils";
 
-// Load MediaPipe from CDN to avoid bundler issues
+// Extend window for MediaPipe globals
+declare global {
+  interface Window {
+    Pose: typeof PoseType;
+    Camera: typeof CameraType;
+  }
+}
+
+// Load script and return promise
+const loadScript = (src: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.crossOrigin = "anonymous";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+};
+
+// Load MediaPipe from CDN via script tags
 const loadMediaPipe = async () => {
-  const pose = await import(
-    /* @vite-ignore */ "https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"
-  );
-  const camera = await import(
-    /* @vite-ignore */ "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
-  );
+  await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js");
+  await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js");
   return {
-    Pose: pose.Pose as typeof PoseType,
-    Camera: camera.Camera as typeof CameraType,
+    Pose: window.Pose,
+    Camera: window.Camera,
   };
 };
 import {
