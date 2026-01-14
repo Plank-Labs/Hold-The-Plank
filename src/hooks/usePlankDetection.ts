@@ -217,19 +217,37 @@ export function usePlankDetection(
       const leftWrist = getLandmarkPoint(landmarks, LANDMARKS.LEFT_WRIST);
       const rightWrist = getLandmarkPoint(landmarks, LANDMARKS.RIGHT_WRIST);
 
-      // Check required landmarks
-      if (!leftShoulder || !rightShoulder || !leftHip || !rightHip || !leftAnkle || !rightAnkle) {
+      // Check required landmarks (shoulders and hips)
+      if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) {
         return null;
       }
 
-      // Calculate midpoints
+      // Flexible ankle detection for side-profile Relic plank support
+      // At least one ankle must be visible to calculate body line
+      const leftAnkleVisible = leftAnkle && isLandmarkVisible(leftAnkle, config.visibilityThreshold);
+      const rightAnkleVisible = rightAnkle && isLandmarkVisible(rightAnkle, config.visibilityThreshold);
+
+      if (!leftAnkleVisible && !rightAnkleVisible) {
+        return null; // Need at least one ankle for body alignment
+      }
+
+      // Use visible ankle(s) - prefer midpoint if both visible, otherwise use single
+      let anklePoint: Point;
+      if (leftAnkleVisible && rightAnkleVisible) {
+        anklePoint = midpoint(leftAnkle!, rightAnkle!);
+      } else if (leftAnkleVisible) {
+        anklePoint = leftAnkle!;
+      } else {
+        anklePoint = rightAnkle!;
+      }
+
+      // Calculate midpoints for shoulder and hip
       const midShoulderPoint = midpoint(leftShoulder, rightShoulder);
       const midHipPoint = midpoint(leftHip, rightHip);
-      const midAnklePoint = midpoint(leftAnkle, rightAnkle);
 
-      // Calculate body alignment (primary metric)
+      // Calculate body alignment using visible ankle point (primary metric)
       const bodyAlignment = buffers.bodyAlignment.add(
-        calculateBodyAlignment(midShoulderPoint, midHipPoint, midAnklePoint)
+        calculateBodyAlignment(midShoulderPoint, midHipPoint, anklePoint)
       );
 
       // Calculate hip angle
@@ -585,8 +603,4 @@ export function usePlankDetection(
   };
 }
 
-// ============================================================================
-// Export Types
-// ============================================================================
-
-export type { DetectionMetrics, SessionMetrics };
+// Types are exported inline at their interface declarations above

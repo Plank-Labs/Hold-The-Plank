@@ -37,9 +37,12 @@ export interface PlankConfig {
   hipAnglePerfectMin: number;
   hipAnglePerfectMax: number;
 
-  // Arm angle: elbow should be relatively straight for high plank
+  // Arm angle: elbow should be ~90° for Relic elbow plank (forearm position)
+  // Relic plank validation requires bent elbows with forearms on ground
   armAngleMin: number;
   armAngleMax: number;
+  armAnglePerfectMin: number;
+  armAnglePerfectMax: number;
 
   // Knee angle: legs should be straight (ideal: 180°)
   kneeAngleMin: number;
@@ -99,9 +102,11 @@ export const DEFAULT_CONFIG: PlankConfig = {
   hipAnglePerfectMin: 165.0,
   hipAnglePerfectMax: 195.0,
 
-  // Arm angle thresholds
-  armAngleMin: 150.0,
-  armAngleMax: 195.0,
+  // Arm angle thresholds for Relic Elbow Plank (~90° target)
+  armAngleMin: 60.0,        // Minimum acceptable elbow angle
+  armAngleMax: 120.0,       // Maximum acceptable elbow angle
+  armAnglePerfectMin: 80.0, // Perfect elbow plank range start
+  armAnglePerfectMax: 100.0, // Perfect elbow plank range end
 
   // Knee angle thresholds
   kneeAngleMin: 160.0,
@@ -135,13 +140,12 @@ export const LANDMARKS = {
 } as const;
 
 // Required landmarks for plank detection
+// Note: Ankles are checked flexibly (at least one required) for side-profile Relic plank support
 export const REQUIRED_LANDMARKS = [
   "LEFT_SHOULDER",
   "RIGHT_SHOULDER",
   "LEFT_HIP",
   "RIGHT_HIP",
-  "LEFT_ANKLE",
-  "RIGHT_ANKLE",
 ] as const;
 
 // ============================================================================
@@ -362,22 +366,35 @@ function evaluateKneeAngleScore(
 
 /**
  * Evaluate arm angle score (15% of total).
- * Tolerates forearm plank variant.
+ * Relic Elbow Plank: ~90° elbow angle is ideal.
+ * Extended arms (~180°) are now penalized.
  */
 function evaluateArmAngleScore(
   avgAngle: number,
   config: PlankConfig
 ): { score: number; feedback: string | null } {
   let score = 0;
+  let feedback: string | null = null;
 
-  if (avgAngle >= config.armAngleMin) {
-    score = Math.min(100, 60 + 40 * (avgAngle - config.armAngleMin) / 30);
+  // Relic Elbow Plank: angle should be ~90°
+  if (avgAngle >= config.armAngleMin && avgAngle <= config.armAngleMax) {
+    if (avgAngle >= config.armAnglePerfectMin && avgAngle <= config.armAnglePerfectMax) {
+      score = 100; // Perfect elbow plank form
+    } else {
+      // Good but not perfect - linear interpolation
+      score = 70 + 30 * (1 - Math.abs(90 - avgAngle) / 30);
+    }
   } else {
-    // Could be forearm plank - don't penalize too much
-    score = 60;
+    // Arms outside valid range for Relic elbow plank
+    if (avgAngle > config.armAngleMax) {
+      feedback = "Bend your elbows - lower onto forearms";
+    } else {
+      feedback = "Straighten elbows slightly";
+    }
+    score = Math.max(0, 40 - Math.abs(90 - avgAngle) / 2);
   }
 
-  return { score, feedback: null };
+  return { score, feedback };
 }
 
 /**
