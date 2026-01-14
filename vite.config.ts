@@ -30,8 +30,15 @@ export default defineConfig(({ mode }) => ({
     commonjsOptions: {
       transformMixedEsModules: true,
     },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          mediapipe: ['@mediapipe/pose', '@mediapipe/camera_utils'],
+        },
+      },
+    },
   },
   optimizeDeps: {
-    include: ['@privy-io/react-auth'],
+    include: ['@privy-io/react-auth', '@mediapipe/pose', '@mediapipe/camera_utils'],
   },
 }));
