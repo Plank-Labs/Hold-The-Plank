@@ -29,21 +29,15 @@ export default defineConfig(({ mode }) => ({
   build: {
     commonjsOptions: {
       transformMixedEsModules: true,
-    },
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          mediapipe: ['@mediapipe/pose', '@mediapipe/camera_utils'],
-        },
+      include: [/node_modules/],
+      namedExports: {
+        '@mediapipe/pose': ['Pose'],
+        '@mediapipe/camera_utils': ['Camera'],
       },
     },
-    minify: 'esbuild',
-    target: 'esnext',
   },
   optimizeDeps: {
-    include: ['@privy-io/react-auth', '@mediapipe/pose', '@mediapipe/camera_utils'],
-  },
-  esbuild: {
-    keepNames: true,
+    include: ['@privy-io/react-auth'],
+    exclude: ['@mediapipe/pose', '@mediapipe/camera_utils'],
   },
 }));
