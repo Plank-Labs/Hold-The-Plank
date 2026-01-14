@@ -9,19 +9,19 @@ const slides = [
     icon: <Swords className="w-16 h-16" />,
     title: "There are apps to conquer space.",
     subtitle: "Running apps measure kilometers. Maps apps claim territory.",
-    visual: "🏃‍♂️🗺️",
+    image: "/assets/onboarding/running.jpg",
   },
   {
     icon: <Clock className="w-16 h-16" />,
-    title: "This dApp lets you conquer time.",
+    title: "Conquer Plank lets you conquer time.",
     subtitle: "Every second you hold a plank is time you steal from Kronos himself.",
-    visual: "⏳🏛️",
+    image: "/assets/onboarding/Plank.jpg",
   },
   {
     icon: <Sparkles className="w-16 h-16" />,
     title: "Time under tension is time you steal from Kronos.",
-    subtitle: "Earn Aura Points. Claim $PLANK tokens. Grow your Guild's Time Tower.",
-    visual: "✨🏆",
+    subtitle: "Earn Aura Points. Claim $PLANK tokens. Collect Sacred Relics. Grow your Guild.",
+    image: "/assets/onboarding/Kronos.jpg",
   },
 ];
 
@@ -82,14 +82,23 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               {slide.icon}
             </motion.div>
 
-            {/* Visual */}
+            {/* Visual Asset */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
-              className="text-5xl mb-8"
+              className="relative aspect-square w-full max-w-[280px] mx-auto mb-8 group"
             >
-              {slide.visual}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#C5A572] to-[#B8860B] rounded-2xl p-[2px] shadow-[0_0_30px_rgba(197,165,114,0.2)]">
+                <div className="w-full h-full bg-[#0a0a1a] rounded-2xl overflow-hidden relative">
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
+                </div>
+              </div>
             </motion.div>
 
             {/* Title */}
@@ -123,11 +132,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                index === currentSlide
-                  ? "w-6 bg-primary"
-                  : "bg-muted-foreground/30"
-              }`}
+              className={`w-2 h-2 rounded-full transition-all ${index === currentSlide
+                ? "w-6 bg-primary"
+                : "bg-muted-foreground/30"
+                }`}
             />
           ))}
         </div>

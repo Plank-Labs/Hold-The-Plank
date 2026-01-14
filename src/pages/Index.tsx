@@ -89,7 +89,7 @@ const DisconnectedView: React.FC = () => {
           There are apps to conquer space.
           <br />
           <span className="text-primary font-medium">
-            This dApp lets you conquer time.
+            Conquer Plank lets you conquer time.
           </span>
         </p>
       </motion.div>
