@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import AppLayout from "@/components/layout/AppLayout";
 import { useGame } from "@/contexts/GameContext";
@@ -7,6 +7,7 @@ import { GreekButton } from "@/components/ui/greek-button";
 import StatsCard from "@/components/StatsCard";
 import { Input } from "@/components/ui/input";
 import { formatTimeReadable, shortenAddress } from "@/lib/gameData";
+import { RELIC_TOKENS_ARRAY } from "@/lib/contracts";
 import {
   User,
   Clock,
@@ -30,19 +31,32 @@ const Profile: React.FC = () => {
     updateUsername,
     userGuild,
     createGuild,
-    mintNFT,
+    mintRelic,
+    isMintingRelic,
+    claimedRelics,
     isConnected,
   } = useGame();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(user.username);
-  const [isMinting, setIsMinting] = useState(false);
   const [showCreateGuild, setShowCreateGuild] = useState(false);
   const [guildName, setGuildName] = useState("");
   const [guildEmblem, setGuildEmblem] = useState("⚔️");
   const [guildDescription, setGuildDescription] = useState("");
 
   const emblems = ["⚔️", "🛡️", "🏛️", "⚡", "🔥", "🌙", "☀️", "🦅", "🦁", "🐺"];
+
+  // Find the first eligible relic that hasn't been claimed yet
+  const nextMintableRelic = useMemo(() => {
+    return RELIC_TOKENS_ARRAY.find(
+      (relic) =>
+        user.totalTimeConquered >= relic.requirement &&
+        !claimedRelics[Number(relic.id) - 1]
+    );
+  }, [user.totalTimeConquered, claimedRelics]);
+
+  // Check if user has any claimed relics
+  const hasClaimedAnyRelic = claimedRelics.some((claimed) => claimed);
 
   if (!isConnected) {
     navigate("/");
@@ -56,13 +70,9 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleMintNFT = async () => {
-    setIsMinting(true);
-    try {
-      await mintNFT();
-    } finally {
-      setIsMinting(false);
-    }
+  const handleMintRelic = async () => {
+    if (!nextMintableRelic) return;
+    await mintRelic(Number(nextMintableRelic.id));
   };
 
   const handleCreateGuild = () => {
@@ -73,7 +83,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const canMintNFT = user.totalTimeConquered >= 60 && !user.hasNFT;
+  const canMintRelic = !!nextMintableRelic;
 
   return (
     <AppLayout>
@@ -186,33 +196,66 @@ const Profile: React.FC = () => {
             </h2>
           </div>
 
-          {user.hasNFT ? (
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-primary/10 border border-primary/30">
-              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center text-2xl">
-                🏆
+          {hasClaimedAnyRelic ? (
+            <div className="space-y-3">
+              {/* Show claimed relics */}
+              <div className="flex flex-wrap gap-2">
+                {RELIC_TOKENS_ARRAY.filter(
+                  (r) => claimedRelics[Number(r.id) - 1]
+                ).map((relic) => (
+                  <div
+                    key={relic.id.toString()}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30"
+                  >
+                    <span className="text-lg">🏆</span>
+                    <span className="text-sm font-semibold text-primary">
+                      {relic.name}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div>
-                <p className="font-semibold text-primary">
-                  Kronos Thief – Level 1
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  First Time Conquered • Minted on Mantle
-                </p>
-              </div>
+
+              {/* Show mint button if there's another eligible relic */}
+              {canMintRelic && nextMintableRelic && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    You've unlocked the {nextMintableRelic.name}!
+                  </p>
+                  <GreekButton
+                    variant="conquest"
+                    size="md"
+                    onClick={handleMintRelic}
+                    disabled={isMintingRelic}
+                    className="w-full gap-2"
+                  >
+                    {isMintingRelic ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Minting on Mantle...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-4 h-4" />
+                        Mint {nextMintableRelic.name}
+                      </>
+                    )}
+                  </GreekButton>
+                </div>
+              )}
             </div>
-          ) : canMintNFT ? (
+          ) : canMintRelic && nextMintableRelic ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                You've conquered enough time to mint your first Time Relic!
+                You've conquered enough time to mint your {nextMintableRelic.name}!
               </p>
               <GreekButton
                 variant="conquest"
                 size="md"
-                onClick={handleMintNFT}
-                disabled={isMinting}
+                onClick={handleMintRelic}
+                disabled={isMintingRelic}
                 className="w-full gap-2"
               >
-                {isMinting ? (
+                {isMintingRelic ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Minting on Mantle...
@@ -220,7 +263,7 @@ const Profile: React.FC = () => {
                 ) : (
                   <>
                     <Shield className="w-4 h-4" />
-                    Mint Time Relic (NFT)
+                    Mint {nextMintableRelic.name} (NFT)
                   </>
                 )}
               </GreekButton>
@@ -292,11 +335,10 @@ const Profile: React.FC = () => {
                     <button
                       key={e}
                       onClick={() => setGuildEmblem(e)}
-                      className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${
-                        guildEmblem === e
-                          ? "bg-primary/20 border-2 border-primary"
-                          : "bg-muted hover:bg-muted/80 border border-border"
-                      }`}
+                      className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${guildEmblem === e
+                        ? "bg-primary/20 border-2 border-primary"
+                        : "bg-muted hover:bg-muted/80 border border-border"
+                        }`}
                     >
                       {e}
                     </button>

@@ -375,11 +375,34 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
   // Complete a plank session - rewards are now queued by backend relayer
   const completeSession = useCallback(
-    (validSeconds: number): SessionResult => {
+    async (validSeconds: number): Promise<SessionResult> => {
       const auraPointsGained = calculateAuraPoints(validSeconds);
       const plankReward = calculatePlankReward(validSeconds);
       const lifeTimeGained = calculateLifeTimeGained(validSeconds);
       const today = new Date().toDateString();
+
+      // Call backend to record session and queue rewards
+      if (authenticated && walletAddress) {
+        try {
+          const token = await getAccessToken();
+          await fetch(`${API_URL}/api/sessions/complete`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              validSeconds,
+              auraPoints: auraPointsGained,
+            }),
+          });
+
+          // Refresh pending rewards after session completes
+          setTimeout(() => fetchPendingRewards(), 1000);
+        } catch (error) {
+          console.error("Failed to record session with backend:", error);
+        }
+      }
 
       // Update user stats locally
       setUser((prev) => {
@@ -419,10 +442,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         );
       }
 
-      // Refresh pending rewards after session completes
-      // (Backend will have queued the reward)
-      setTimeout(() => fetchPendingRewards(), 1000);
-
       return {
         validTimeSeconds: validSeconds,
         auraPointsGained,
@@ -430,7 +449,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         lifeTimeGained,
       };
     },
-    [user.guildId, user.walletAddress, fetchPendingRewards]
+    [
+      authenticated,
+      walletAddress,
+      user.guildId,
+      user.walletAddress,
+      getAccessToken,
+      fetchPendingRewards,
+    ]
   );
 
   // Mint a relic using signature from backend
