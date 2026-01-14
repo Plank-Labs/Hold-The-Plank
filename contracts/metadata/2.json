@@ -1,0 +1,14 @@
+{
+  "name": "Silver Helmet",
+  "description": "Awarded to warriors who have conquered 10 minutes of total plank time. Your discipline grows stronger with each hold.",
+  "image": "ipfs://bafybeiclqfwyijpoyms7j7oq7m545bi7zwh3c3sjlz2uc4t2c3mcyirfse",
+  "external_url": "https://conquerplank.app/relics/2",
+  "attributes": [
+    { "trait_type": "Tier", "value": "Silver" },
+    { "trait_type": "Level", "value": 2 },
+    { "trait_type": "Requirement", "value": "10 minutes" },
+    { "trait_type": "Requirement Seconds", "value": 600 },
+    { "trait_type": "Rarity", "value": "Uncommon" },
+    { "trait_type": "Greek Theme", "value": "Helm of Endurance" }
+  ]
+}

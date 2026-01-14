@@ -1,0 +1,32 @@
+{
+  "name": "Gold Sword",
+  "description": "Awarded to warriors who have conquered 1 hour of total plank time. You wield the strength of a true champion.",
+  "image": "ipfs://bafybeifuprfjexlsfu7xx5wtvsigkrd542htc4vicv3ji47d4bjrhgzgnu",
+  "external_url": "https://conquerplank.app/relics/3",
+  "attributes": [
+    {
+      "trait_type": "Tier",
+      "value": "Gold"
+    },
+    {
+      "trait_type": "Level",
+      "value": 3
+    },
+    {
+      "trait_type": "Requirement",
+      "value": "1 hour"
+    },
+    {
+      "trait_type": "Requirement Seconds",
+      "value": 3600
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Greek Theme",
+      "value": "Blade of the Olympian"
+    }
+  ]
+}

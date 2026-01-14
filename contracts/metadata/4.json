@@ -1,0 +1,14 @@
+{
+  "name": "Diamond Crown",
+  "description": "Awarded to warriors who have conquered 10 hours of total plank time. You stand among the elite, unbreakable in body and spirit.",
+  "image": "ipfs://bafybeibvqqnpoyuz5flfrxngf3codwqqoixaqujykjwek5whjma3epqoje",
+  "external_url": "https://conquerplank.app/relics/4",
+  "attributes": [
+    { "trait_type": "Tier", "value": "Diamond" },
+    { "trait_type": "Level", "value": 4 },
+    { "trait_type": "Requirement", "value": "10 hours" },
+    { "trait_type": "Requirement Seconds", "value": 36000 },
+    { "trait_type": "Rarity", "value": "Epic" },
+    { "trait_type": "Greek Theme", "value": "Crown of the Titan" }
+  ]
+}

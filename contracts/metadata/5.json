@@ -1,0 +1,14 @@
+{
+  "name": "Kronos Slayer",
+  "description": "Awarded to legendary warriors who have conquered 100 hours of total plank time. You have defeated time itself. Kronos bows before your unmatched will.",
+  "image": "ipfs://bafybeiaxey7gnq7l7pynvnuah24akhkgoudkixvv2xsudhcudc62hvikly",
+  "external_url": "https://conquerplank.app/relics/5",
+  "attributes": [
+    { "trait_type": "Tier", "value": "Legendary" },
+    { "trait_type": "Level", "value": 5 },
+    { "trait_type": "Requirement", "value": "100 hours" },
+    { "trait_type": "Requirement Seconds", "value": 360000 },
+    { "trait_type": "Rarity", "value": "Legendary" },
+    { "trait_type": "Greek Theme", "value": "Scythe of the God Slayer" }
+  ]
+}
