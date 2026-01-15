@@ -140,22 +140,20 @@ export function GymQRScanner({ onClose }: GymQRScannerProps) {
         <p>Point your camera at a gym's QR code to check in</p>
       </div>
 
-      {import.meta.env.DEV && (
-        <div className="dev-bypass mt-8">
-          <button
-            className="simulate-scan-btn"
-            onClick={() => {
-              setIsScanning(false);
-              const queryParams = new URLSearchParams();
-              queryParams.set('id', '1'); // Mock Gym ID from MOCK_GYM
-              queryParams.set('secret', 'MOCK_SECRET_ALPHA_77');
-              navigate(`/gym/join?${queryParams.toString()}`);
-            }}
-          >
-            🚀 Simulate Scan (Dev Only)
-          </button>
-        </div>
-      )}
+      <div className="dev-bypass mt-8">
+        <button
+          className="simulate-scan-btn"
+          onClick={() => {
+            setIsScanning(false);
+            const queryParams = new URLSearchParams();
+            queryParams.set('id', '1'); // Mock Gym ID from MOCK_GYM
+            queryParams.set('secret', 'MOCK_SECRET_ALPHA_77');
+            navigate(`/gym/join?${queryParams.toString()}`);
+          }}
+        >
+          🚀 Simulate Scan (Dev Only)
+        </button>
+      </div>
 
       <style>{`
         .gym-qr-scanner {
