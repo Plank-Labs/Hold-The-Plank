@@ -355,13 +355,13 @@ const Profile: React.FC = () => {
                   placeholder="A short motto for your guild"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <GreekButton
                   variant="primary"
                   size="md"
                   onClick={handleCreateGuild}
                   disabled={!guildName.trim()}
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                 >
                   Create Guild
                 </GreekButton>
@@ -369,18 +369,19 @@ const Profile: React.FC = () => {
                   variant="ghost"
                   size="md"
                   onClick={() => setShowCreateGuild(false)}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </GreekButton>
               </div>
             </div>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <GreekButton
                 variant="primary"
                 size="md"
                 onClick={() => setShowCreateGuild(true)}
-                className="flex-1 gap-2"
+                className="w-full sm:flex-1 gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Create Guild
@@ -389,7 +390,7 @@ const Profile: React.FC = () => {
                 variant="secondary"
                 size="md"
                 onClick={() => navigate("/rankings")}
-                className="flex-1"
+                className="w-full sm:flex-1"
               >
                 Join Existing
               </GreekButton>
