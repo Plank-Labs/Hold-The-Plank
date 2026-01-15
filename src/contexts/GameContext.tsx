@@ -6,7 +6,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useCreateWallet } from "@privy-io/react-auth";
 import {
   useAccount,
   useReadContract,
@@ -34,9 +34,7 @@ import {
   type PendingReward,
   type RelicSignatureResponse,
 } from "@/lib/contracts";
-
-// API base URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { authApi, sessionsApi, apiClient, type BackendUser } from "@/api";
 
 interface GameContextType {
   // Wallet state
@@ -100,11 +98,17 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     user: privyUser,
     getAccessToken,
   } = usePrivy();
+  const { wallets } = useWallets();
+  const { createWallet } = useCreateWallet();
   const { address, isConnected: wagmiConnected } = useAccount();
 
   const [user, setUser] = useState<UserProfile>(defaultUser);
   const [guilds, setGuilds] = useState<Guild[]>(mockGuilds);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+
+  // Backend user state
+  const [backendUser, setBackendUser] = useState<BackendUser | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Pending rewards state
   const [pendingRewards, setPendingRewards] = useState<PendingReward[]>([]);
@@ -179,7 +183,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
   // Find a wallet address from any source
   const getWalletAddress = () => {
+    // Find embedded wallet from useWallets hook
+    const embeddedWallet = wallets.find(w => w.walletClientType === 'privy');
+
     if (address) return address;
+    if (embeddedWallet?.address) return embeddedWallet.address;
     if (privyUser?.wallet?.address) return privyUser.wallet.address;
     const linkedWallet = privyUser?.linkedAccounts?.find(
       (a) => a.type === "wallet"
@@ -190,6 +198,36 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const walletAddress = getWalletAddress();
+
+  // Track if we've already attempted to create a wallet this session
+  const [walletCreationAttempted, setWalletCreationAttempted] = useState(false);
+
+  // Auto-create embedded wallet for authenticated users without one
+  useEffect(() => {
+    const autoCreateWallet = async () => {
+      // Only attempt once per session, and wait a bit for wallets to load
+      if (authenticated && ready && wallets.length === 0 && !walletCreationAttempted) {
+        // Wait a moment for wallets to load from Privy
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Check again after waiting
+        if (wallets.length === 0) {
+          setWalletCreationAttempted(true);
+          try {
+            await createWallet();
+          } catch (error) {
+            // Ignore "already has wallet" error - it means wallet is loading
+            const errorMessage = error instanceof Error ? error.message : '';
+            if (!errorMessage.includes('already has')) {
+              console.error("[Wallet] Failed to create embedded wallet:", error);
+            }
+          }
+        }
+      }
+    };
+
+    autoCreateWallet();
+  }, [authenticated, ready, wallets.length, createWallet, walletCreationAttempted]);
 
   // Watch for PlankMinted events to update balance
   useWatchContractEvent({
@@ -225,20 +263,51 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     },
   });
 
-  // Sync user profile with wallet connection
+  // Verify auth with backend when Privy authenticates
+  useEffect(() => {
+    const verifyWithBackend = async () => {
+      if (!authenticated || !ready || isAuthenticating) return;
+
+      setIsAuthenticating(true);
+      try {
+        const token = await getAccessToken();
+        if (token) {
+          const response = await authApi.verifyAuth(token);
+          setBackendUser(response.user);
+          console.log("[Auth] Backend user verified:", response);
+        }
+      } catch (error) {
+        console.error("[Auth] Failed to verify with backend:", error);
+        setBackendUser(null);
+      } finally {
+        setIsAuthenticating(false);
+      }
+    };
+
+    if (authenticated && ready) {
+      verifyWithBackend();
+    } else if (ready && !authenticated) {
+      setBackendUser(null);
+    }
+  }, [authenticated, ready, getAccessToken]);
+
+  // Sync user profile with wallet connection and backend data
   useEffect(() => {
     if (authenticated && walletAddress) {
       setUser((prev) => ({
         ...prev,
+        id: backendUser?.id ?? prev.id,
         walletAddress: walletAddress,
-        username: prev.username || `Warrior_${walletAddress.slice(2, 6)}`,
+        username: backendUser?.username || prev.username || `Warrior_${walletAddress.slice(2, 6)}`,
         plankBalance: Number(formatUnits(plankBalance, 18)),
+        auraPoints: backendUser?.auraPoints ?? prev.auraPoints,
+        guildId: backendUser?.guildId?.toString() ?? prev.guildId,
       }));
     } else if (ready && !authenticated) {
       setUser(defaultUser);
       setPendingRewards([]);
     }
-  }, [authenticated, walletAddress, plankBalance, ready]);
+  }, [authenticated, walletAddress, plankBalance, ready, backendUser]);
 
   // Sync claimed relics from contract
   useEffect(() => {
@@ -262,16 +331,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     setIsLoadingPendingRewards(true);
     try {
       const token = await getAccessToken();
-      const response = await fetch(`${API_URL}/api/users/pending-rewards`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      if (token) {
+        const data = await sessionsApi.getPendingRewards(token);
         setPendingRewards(
-          data.rewards.map((r: { amount: string } & Omit<PendingReward, "amount">) => ({
+          data.rewards.map((r) => ({
             ...r,
             amount: BigInt(r.amount),
           }))
@@ -386,37 +449,59 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       formMetrics?: FormMetrics
     ): Promise<SessionResult> => {
       const actualTotalSeconds = totalSeconds ?? validSeconds;
-      const auraPointsGained = calculateAuraPoints(validSeconds);
-      const plankReward = calculatePlankReward(validSeconds);
-      const lifeTimeGained = calculateLifeTimeGained(validSeconds);
       const today = new Date().toDateString();
 
+      // Calculate fallback values in case backend call fails
+      const fallbackAuraPoints = calculateAuraPoints(validSeconds);
+      const fallbackPlankReward = calculatePlankReward(validSeconds);
+      const fallbackLifeTime = calculateLifeTimeGained(validSeconds);
+
+      let auraPointsGained = fallbackAuraPoints;
+      let plankReward = fallbackPlankReward;
+      let lifeTimeGained = fallbackLifeTime;
+
       // Call backend to record session and queue rewards
+      console.log("[Session] Auth check:", { authenticated, walletAddress, walletsLength: wallets.length });
       if (authenticated && walletAddress) {
         try {
           const token = await getAccessToken();
-          await fetch(`${API_URL}/api/sessions/complete`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              validSeconds,
-              totalSeconds: actualTotalSeconds,
-              auraPoints: auraPointsGained,
-              formMetrics: formMetrics ?? null,
-            }),
-          });
+          console.log("[Session] Token:", token ? "obtained" : "null");
+          if (token) {
+            console.log("[Session] Calling sessionsApi.completeSession...");
+            const response = await sessionsApi.completeSession(
+              {
+                userId: user.id,
+                validSeconds,
+                totalSeconds: actualTotalSeconds,
+                auraPoints: fallbackAuraPoints,
+                formMetrics: formMetrics ?? null,
+              },
+              token
+            );
 
-          // Refresh pending rewards after session completes
-          setTimeout(() => fetchPendingRewards(), 1000);
+            // Use backend response values
+            auraPointsGained = response.session.auraPointsGained;
+            // Convert wei to display format (plankReward / 20 = seconds, so 1 PLANK per 20 seconds)
+            plankReward = validSeconds / 20;
+            lifeTimeGained = `${response.session.lifeTimeGained.toFixed(1)} min`;
+
+            // Update user with backend totals
+            setUser((prev) => ({
+              ...prev,
+              auraPoints: response.user.totalAuraPoints,
+              totalTimeConquered: response.user.totalTimeConquered,
+            }));
+
+            // Refresh pending rewards after session completes
+            setTimeout(() => fetchPendingRewards(), 1000);
+          }
         } catch (error) {
           console.error("Failed to record session with backend:", error);
+          // Fall through to use local calculations
         }
       }
 
-      // Update user stats locally
+      // Update user stats locally (for non-authenticated users or as fallback)
       setUser((prev) => {
         const isNewDay = prev.lastSessionDate !== today;
         const newStreak = isNewDay
@@ -466,6 +551,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     [
       authenticated,
       walletAddress,
+      wallets.length,
       user.guildId,
       user.walletAddress,
       getAccessToken,
@@ -515,24 +601,17 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
         // 1. Request signature from backend
         const token = await getAccessToken();
-        const signatureResponse = await fetch(
-          `${API_URL}/api/relics/request-signature`,
+        const signatureResponse = await apiClient.post<RelicSignatureResponse>(
+          "/api/relics/request-signature",
+          { tokenId },
           {
-            method: "POST",
             headers: {
-              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ tokenId }),
           }
         );
 
-        if (!signatureResponse.ok) {
-          const error = await signatureResponse.json();
-          throw new Error(error.message || "Failed to get signature");
-        }
-
-        const sigData: RelicSignatureResponse = await signatureResponse.json();
+        const sigData = signatureResponse.data;
 
         // 2. Submit to contract
         writeContract({

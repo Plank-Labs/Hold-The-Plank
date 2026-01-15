@@ -1,6 +1,7 @@
 // Mock data and game state for Conquer Plank dApp
 
 export interface UserProfile {
+  id: number;
   walletAddress: string;
   username: string;
   avatar: string;
@@ -143,6 +144,7 @@ export const mockGuilds: Guild[] = [
 ];
 
 export const defaultUser: UserProfile = {
+  id: 0,
   walletAddress: "",
   username: "",
   avatar: "🏛️",

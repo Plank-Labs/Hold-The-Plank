@@ -28,6 +28,12 @@ export const mantleSepolia = defineChain({
 export const wagmiConfig = createConfig({
   chains: [mantleSepolia],
   transports: {
-    [mantleSepolia.id]: http(),
+    [mantleSepolia.id]: http(import.meta.env.VITE_MANTLE_RPC_URL || undefined, {
+      // Disable retries to prevent spam when RPC is down
+      retryCount: 0,
+      timeout: 5000,
+    }),
   },
+  // Reduce polling to prevent repeated failed RPC calls
+  pollingInterval: 60_000, // Poll every 60 seconds instead of default 4 seconds
 });
