@@ -19,7 +19,7 @@ const slides = [
   },
   {
     icon: <Sparkles className="w-16 h-16" />,
-    title: "Time under tension is time you steal from Kronos.",
+    title: "Steal time from Kronos. Hold the plank.",
     subtitle: "Earn Aura, claim $PLANK, collect Relics, and grow your Guild.",
     image: "/assets/onboarding/Kronos.jpg",
   },
